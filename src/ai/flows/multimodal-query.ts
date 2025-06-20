@@ -36,6 +36,7 @@ const MultimodalQueryOutputSchema = z.object({
   visualAid: z
     .string()
     .optional()
+    .nullable() // Allow null in addition to string or undefined
     .describe('A data URI containing a visual aid, such as a chart, diagram, or a generated image. This should only be populated if explicitly requested by the user for a visual or if an image was generated.'),
 });
 export type MultimodalQueryOutput = z.infer<typeof MultimodalQueryOutputSchema>;
