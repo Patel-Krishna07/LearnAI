@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Award, BarChart3, Brain, Compass, Diamond, GraduationCap, ShieldCheck, Sparkles, Star, Trophy, Zap, ListChecks, ToggleRight, Link2, PenLine, Timer, CheckCircle2, XCircle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Award, BarChart3, Brain, Compass, Diamond, GraduationCap, ShieldCheck, Sparkles, Star, Trophy, Zap, ListChecks, ToggleRight, Link2, PenLine, Timer, CheckCircle2, XCircle, Gift, TrendingUp } from 'lucide-react';
 import type { User, LeaderboardUser, BadgeDefinition as BadgeDefinitionType } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -33,6 +34,12 @@ export default function ProgressPage() {
   const router = useRouter();
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
+
+  // Placeholder for progress bar data
+  const currentXP = user?.points || 0;
+  const nextLevelXP = BADGE_DEFINITIONS.find(b => b.pointsThreshold > currentXP)?.pointsThreshold || (currentXP > 0 ? currentXP + 100 : 100);
+  const progressPercentage = Math.min((currentXP / nextLevelXP) * 100, 100);
+
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -102,19 +109,20 @@ export default function ProgressPage() {
               <Zap className="text-primary h-6 w-6" /> Your Stats
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
-              <span className="text-lg font-medium text-secondary-foreground">Total Points</span>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-secondary rounded-lg shadow">
+              <span className="text-lg font-medium text-secondary-foreground">Total XP Points</span>
               <span className="text-3xl font-bold text-primary">{user.points}</span>
             </div>
+            
             <div>
-              <h3 className="text-lg font-semibold mb-2 text-primary">Your Badges</h3>
+              <h3 className="text-lg font-semibold mb-3 text-primary">Your Badges ({userBadgesWithDetails.length})</h3>
               {userBadgesWithDetails.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {userBadgesWithDetails.map((badge) => {
                     const IconComponent = badge.icon;
                     return (
-                      <Card key={badge.name} className="flex flex-col items-center p-4 text-center bg-background shadow-md hover:shadow-lg transition-shadow">
+                      <Card key={badge.name} className="flex flex-col items-center p-4 text-center bg-background shadow-md hover:shadow-lg transition-shadow border-t-4 border-accent">
                         <IconComponent className="h-10 w-10 text-accent mb-2" />
                         <p className="font-semibold text-sm">{badge.name}</p>
                         <p className="text-xs text-muted-foreground">{badge.description}</p>
@@ -123,11 +131,44 @@ export default function ProgressPage() {
                   })}
                 </div>
               ) : (
-                <p className="text-muted-foreground">No badges earned yet. Keep learning!</p>
+                <p className="text-muted-foreground">No badges earned yet. Keep learning to earn your first badge!</p>
               )}
             </div>
           </CardContent>
         </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl font-headline flex items-center gap-2">
+              <TrendingUp className="text-primary h-6 w-6" /> Progress to Next Milestone
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Progress value={progressPercentage} className="h-3" />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Current XP: {currentXP}</span>
+              <span>Next Milestone at: {nextLevelXP} XP</span>
+            </div>
+            <p className="text-xs text-center text-muted-foreground italic">Keep learning to unlock more badges and climb the leaderboard!</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl font-headline flex items-center gap-2">
+              <Gift className="text-primary h-6 w-6" /> Mystery Box
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center text-center p-4 bg-secondary/50 rounded-md">
+              <Gift className="h-12 w-12 text-accent mb-3" />
+              <p className="font-semibold">Answer 3 practice questions in a row correctly to unlock a Mystery Box!</p>
+              <p className="text-sm text-muted-foreground mt-1">(Feature coming soon)</p>
+              <Button disabled className="mt-4">Check Streak (Coming Soon)</Button>
+            </div>
+          </CardContent>
+        </Card>
+
 
         <Card className="shadow-lg">
           <CardHeader>
@@ -192,7 +233,7 @@ export default function ProgressPage() {
               <CardTitle className="text-xl font-headline flex items-center gap-2">
                 <ListChecks className="text-primary h-6 w-6" /> Quick MCQs
               </CardTitle>
-              <CardDescription>Test your knowledge with multiple choice questions.</CardDescription>
+              <CardDescription>Test your knowledge with multiple choice questions. Earn +10 XP for right answer!</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="font-semibold">What is the powerhouse of the cell?</p>
@@ -202,7 +243,7 @@ export default function ProgressPage() {
                 <Button variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">c) Mitochondria <CheckCircle2 className="ml-2 h-4 w-4 text-green-500"/></Button>
                 <Button variant="outline">d) Cell wall</Button>
               </div>
-              <p className="text-sm text-muted-foreground italic">Static example. Full interactivity to be added.</p>
+              <p className="text-sm text-muted-foreground italic">Static example. Full interactivity & XP to be added.</p>
             </CardContent>
             <CardFooter>
                 <Button disabled>Generate New MCQ (Coming Soon)</Button>
@@ -215,7 +256,7 @@ export default function ProgressPage() {
               <CardTitle className="text-xl font-headline flex items-center gap-2">
                 <ToggleRight className="text-primary h-6 w-6" /> True/False Challenges
               </CardTitle>
-              <CardDescription>Quick decision-making for warmups.</CardDescription>
+              <CardDescription>Quick decision-making for warmups. Earn +5 XP for correct answers.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
@@ -234,7 +275,7 @@ export default function ProgressPage() {
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground italic">Static example. Full interactivity to be added.</p>
+              <p className="text-sm text-muted-foreground italic">Static example. Full interactivity & XP to be added.</p>
             </CardContent>
              <CardFooter>
                 <Button disabled>New True/False (Coming Soon)</Button>
@@ -247,7 +288,7 @@ export default function ProgressPage() {
               <CardTitle className="text-xl font-headline flex items-center gap-2">
                 <Link2 className="text-primary h-6 w-6" /> Match the Pairs
               </CardTitle>
-              <CardDescription>Connect terms to their meanings or associations.</CardDescription>
+              <CardDescription>Connect terms to their meanings. Earn +15 XP for a full correct match.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="font-semibold">Match the following terms:</p>
@@ -261,7 +302,7 @@ export default function ProgressPage() {
                 <div className="p-2 border rounded-md bg-background"><strong>Term:</strong> DNA</div>
                 <div className="p-2 border rounded-md bg-background"><strong>Meaning:</strong> Genetic material</div>
               </div>
-              <p className="text-sm text-muted-foreground italic">Static example. Draggable matching UI to be added.</p>
+              <p className="text-sm text-muted-foreground italic">Static example. Draggable matching UI & XP to be added.</p>
             </CardContent>
             <CardFooter>
                 <Button disabled>New Matching Game (Coming Soon)</Button>
@@ -274,7 +315,7 @@ export default function ProgressPage() {
               <CardTitle className="text-xl font-headline flex items-center gap-2">
                 <PenLine className="text-primary h-6 w-6" /> Fill in the Blank
               </CardTitle>
-              <CardDescription>Type a word or number to complete the sentence.</CardDescription>
+              <CardDescription>Type a word or number. Earn +8 XP for each correct blank.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
@@ -285,7 +326,7 @@ export default function ProgressPage() {
                   <span>The capital of France is </span> <Input type="text" placeholder="Your answer" className="w-36 h-8" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground italic">Static example. Input validation and AI flexible matching to be added.</p>
+              <p className="text-sm text-muted-foreground italic">Static example. Input validation, AI flexible matching & XP to be added.</p>
             </CardContent>
             <CardFooter>
                 <Button disabled>New Fill-in-Blank (Coming Soon)</Button>
@@ -298,13 +339,13 @@ export default function ProgressPage() {
               <CardTitle className="text-xl font-headline flex items-center gap-2">
                 <Timer className="text-primary h-6 w-6" /> Timed Brain Boosters
               </CardTitle>
-              <CardDescription>Answer quickly to build urgency!</CardDescription>
+              <CardDescription>Answer quickly! Earn +12 XP for correct answer within time.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="font-semibold">You have 20 seconds to answer: What is 3³?</p>
               <Input type="text" placeholder="Your answer" className="h-10"/>
               <div className="text-lg font-bold text-destructive">Time left: 15s</div>
-              <p className="text-sm text-muted-foreground italic">Static example. Timer functionality and answer checking to be added.</p>
+              <p className="text-sm text-muted-foreground italic">Static example. Timer functionality, answer checking & XP to be added.</p>
             </CardContent>
             <CardFooter>
                 <Button disabled>Start Timed Challenge (Coming Soon)</Button>
@@ -316,3 +357,4 @@ export default function ProgressPage() {
     </AppShell>
   );
 }
+
