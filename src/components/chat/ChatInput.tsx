@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useState, useRef, ChangeEvent, useEffect } from 'react';
+import { useState, useRef, ChangeEvent, useEffect, DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Mic, Send, Paperclip, X, StopCircle } from 'lucide-react';
+import { Mic, Send, Paperclip, X, StopCircle, UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import Image from 'next/image'; // Corrected: Added Image import
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
   onSendMessage: (text: string, imageDataUri?: string, voiceDataUri?: string) => void;
@@ -24,14 +25,15 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
   const { toast } = useToast();
 
   const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(event.target.value);
   };
 
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const processImageFile = (file: File | null) => {
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast({ title: "Image too large", description: "Please select an image smaller than 5MB.", variant: "destructive" });
@@ -44,6 +46,11 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    processImageFile(file || null);
   };
 
   const removeImage = () => {
@@ -71,10 +78,9 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
         mediaRecorderRef.current.stop();
       }
       setIsRecording(false);
-      // onstop event will handle setting the blob
     } else {
       // Start recording
-      setRecordedAudioBlob(null); // Clear any previous recording
+      setRecordedAudioBlob(null); 
       audioChunksRef.current = [];
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -87,10 +93,9 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
         };
 
         mediaRecorderRef.current.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Or appropriate MIME type
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); 
           setRecordedAudioBlob(audioBlob);
           audioChunksRef.current = [];
-           // Stop tracks to turn off microphone indicator
           stream.getTracks().forEach(track => track.stop());
         };
         
@@ -112,15 +117,8 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
     }
 
     if (isRecording) {
-      // If user clicks send while recording, stop recording first.
-      // The actual sending will happen once the blob is processed in onstop,
-      // so we might need a way to signal handleSend to wait or to pick up the processed audio.
-      // For simplicity now, let's ask user to stop recording first.
-      // Or, let current implementation of handleMicToggle handle setting recordedAudioBlob.
-      // User has to click Mic again to finalize audio, then click Send.
-      // Let's make Send button finalize if recording.
        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-        mediaRecorderRef.current.onstop = async () => { // Override onstop to send immediately
+        mediaRecorderRef.current.onstop = async () => { 
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             audioChunksRef.current = [];
             mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
@@ -131,11 +129,11 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
             
             setText('');
             removeImage();
-            setRecordedAudioBlob(null); // Clear after sending
+            setRecordedAudioBlob(null);
             setIsRecording(false);
         };
         mediaRecorderRef.current.stop();
-        return; // Return here as onstop will handle the sending
+        return; 
       }
     }
     
@@ -152,7 +150,7 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
     onSendMessage(text.trim(), imageDataUri, voiceDataUri);
     setText('');
     removeImage();
-    setRecordedAudioBlob(null); // Clear after sending
+    setRecordedAudioBlob(null);
   };
 
   const blobToDataURI = (blob: Blob): Promise<string> => {
@@ -170,17 +168,64 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
     });
   };
 
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!isLoading && !isRecording) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingOver(false);
+    if (isLoading || isRecording) return;
+
+    const files = event.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
+        processImageFile(file);
+      } else {
+        toast({ title: "Invalid file type", description: "Please drop an image file.", variant: "destructive" });
+      }
+      event.dataTransfer.clearData();
+    }
+  };
+
   const canSend = !isLoading && (!!text.trim() || !!imageFile || !!recordedAudioBlob || isRecording);
 
   return (
-    <div className="p-4 border-t bg-background shadow- ऊपर">
+    <div 
+      className={cn(
+        "p-4 border-t bg-background shadow- ऊपर relative",
+        isDraggingOver && "border-primary ring-2 ring-primary"
+      )}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDraggingOver && (
+        <div className="absolute inset-0 bg-primary/10 flex flex-col items-center justify-center pointer-events-none rounded-md">
+          <UploadCloud className="h-12 w-12 text-primary mb-2" />
+          <p className="text-primary font-medium">Drop image here</p>
+        </div>
+      )}
+
       {imagePreview && (
         <div className="mb-2 relative w-32 h-32 border rounded-md overflow-hidden">
           <Image src={imagePreview} alt="Preview" layout="fill" objectFit="cover" />
           <Button
             variant="destructive"
             size="icon"
-            className="absolute top-1 right-1 h-6 w-6"
+            className="absolute top-1 right-1 h-6 w-6 z-10"
             onClick={removeImage}
             aria-label="Remove image"
           >
