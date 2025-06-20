@@ -1,34 +1,36 @@
+
 "use client";
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { FileText, Trash2, History } from 'lucide-react';
+import { MessageSquareText, Trash2, History } from 'lucide-react'; // Changed FileText to MessageSquareText
 import { Card, CardDescription, CardHeader, CardTitle } from '../ui/card';
-
-// Mock data for chat history items
-// In a real app, this would come from state/API
-const mockHistoryItems = [
-  { id: '1', title: 'Photosynthesis basics', date: '2024-07-28' },
-  { id: '2', title: 'Quantum Physics intro', date: '2024-07-27' },
-  { id: '3', title: 'Shakespearean Sonnets', date: '2024-07-26' },
-  { id: '4', title: 'World War II causes', date: '2024-07-25' },
-];
+import type { ChatMessage as ChatMessageType } from '@/lib/types';
+import { formatDistanceToNow } from 'date-fns';
 
 interface ChatHistoryPanelProps {
-  onSelectHistoryItem: (itemId: string) => void;
+  currentChatMessages: ChatMessageType[]; // Expecting user messages from the current chat
+  onSelectHistoryItem: (messageId: string) => void;
   onClearHistory: () => void;
 }
 
-export function ChatHistoryPanel({ onSelectHistoryItem, onClearHistory }: ChatHistoryPanelProps) {
-  // For now, we'll use mock data.
-  const historyItems = mockHistoryItems; 
+export function ChatHistoryPanel({ currentChatMessages, onSelectHistoryItem, onClearHistory }: ChatHistoryPanelProps) {
+  // Filter to ensure we only consider user messages and they have content
+  const historyItems = currentChatMessages
+    .filter(msg => msg.role === 'user' && msg.content.trim() !== '')
+    .map(msg => ({
+      id: msg.id,
+      title: msg.content.substring(0, 50) + (msg.content.length > 50 ? '...' : ''), // Truncate long messages
+      timestamp: msg.timestamp,
+    }))
+    .reverse(); // Show newest first
 
   if (historyItems.length === 0) {
     return (
       <div className="p-4 h-full flex flex-col items-center justify-center text-center">
         <History className="h-16 w-16 text-muted-foreground mb-4" />
         <p className="text-lg font-semibold text-muted-foreground">No Chat History</p>
-        <p className="text-sm text-muted-foreground">Your conversations will appear here.</p>
+        <p className="text-sm text-muted-foreground">Your questions will appear here as you chat.</p>
       </div>
     );
   }
@@ -36,7 +38,7 @@ export function ChatHistoryPanel({ onSelectHistoryItem, onClearHistory }: ChatHi
   return (
     <div className="h-full flex flex-col p-1">
       <div className="p-3 flex justify-between items-center border-b">
-        <h3 className="text-lg font-semibold font-headline">Chat History</h3>
+        <h3 className="text-lg font-semibold font-headline">Current Conversation</h3>
         <Button variant="ghost" size="icon" onClick={onClearHistory} aria-label="Clear history" disabled={historyItems.length === 0}>
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
@@ -46,18 +48,20 @@ export function ChatHistoryPanel({ onSelectHistoryItem, onClearHistory }: ChatHi
           {historyItems.map((item) => (
             <Card 
               key={item.id} 
-              className="cursor-pointer hover:bg-secondary transition-colors"
+              className="cursor-pointer hover:bg-primary/10 transition-colors" // Changed hover style
               onClick={() => onSelectHistoryItem(item.id)}
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && onSelectHistoryItem(item.id)}
-              aria-label={`Chat: ${item.title}, dated ${item.date}`}
+              aria-label={`Chat query: ${item.title}, from ${formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}`}
             >
               <CardHeader className="p-3">
                 <div className="flex items-start gap-3">
-                  <FileText className="h-5 w-5 text-accent mt-1 flex-shrink-0" />
-                  <div className="flex-grow">
-                    <CardTitle className="text-sm font-medium truncate">{item.title}</CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">{item.date}</CardDescription>
+                  <MessageSquareText className="h-5 w-5 text-accent mt-1 flex-shrink-0" />
+                  <div className="flex-grow overflow-hidden">
+                    <CardTitle className="text-sm font-medium truncate" title={item.title}>{item.title}</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>

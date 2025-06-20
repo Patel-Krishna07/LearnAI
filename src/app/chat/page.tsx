@@ -10,7 +10,7 @@ import { ChatHistoryPanel } from '@/components/chat/ChatHistoryPanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { PanelRightOpen, PanelRightClose, Bot, Sparkles } from 'lucide-react';
-import type { ChatMessage as ChatMessageType, StudyGuideEntry } from '@/lib/types';
+import type { ChatMessage as ChatMessageType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { multimodalQuery } from '@/ai/flows/multimodal-query';
 import { createStudyGuideEntry as createStudyGuideEntryFlow } from '@/ai/flows/ai-study-guide';
@@ -20,6 +20,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 
+const CHAT_MESSAGES_STORAGE_KEY = 'learnai-current-chatMessages';
+const INITIAL_GREETING_ID = 'initial-greeting';
 
 export default function ChatPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -32,14 +34,69 @@ export default function ChatPage() {
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  // Auth redirection
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/login?redirect=/chat');
     }
   }, [isAuthenticated, authLoading, router]);
 
+  // Load messages from localStorage on initial mount
   useEffect(() => {
-    // Auto-scroll to bottom
+    if (isAuthenticated) {
+      const storedMessages = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
+      if (storedMessages) {
+        try {
+          const parsedMessages = JSON.parse(storedMessages).map((msg: ChatMessageType) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp), // Ensure timestamps are Date objects
+          }));
+          setMessages(parsedMessages);
+        } catch (e) {
+          console.error("Failed to parse stored messages:", e);
+          localStorage.removeItem(CHAT_MESSAGES_STORAGE_KEY); // Clear corrupted data
+          // Add initial greeting if localStorage was cleared or empty
+          setMessages([
+            {
+              id: INITIAL_GREETING_ID,
+              role: 'assistant',
+              content: "Hello! I'm LearnAI, your interactive learning assistant. How can I help you today? You can ask me questions, upload an image, or even use voice!",
+              timestamp: new Date(),
+            }
+          ]);
+        }
+      } else {
+         // Add initial greeting if no messages stored
+        setMessages([
+          {
+            id: INITIAL_GREETING_ID,
+            role: 'assistant',
+            content: "Hello! I'm LearnAI, your interactive learning assistant. How can I help you today? You can ask me questions, upload an image, or even use voice!",
+            timestamp: new Date(),
+          }
+        ]);
+      }
+    }
+  }, [isAuthenticated]);
+
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (isAuthenticated && messages.length > 0) {
+      // Avoid saving just the initial greeting if nothing else happened
+      if (messages.length === 1 && messages[0].id === INITIAL_GREETING_ID) {
+        // If only initial greeting is present, don't persist unless modified or more messages added
+        // Or, to ensure it's always there on first load after clearing:
+        // localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(messages));
+      } else {
+        localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(messages));
+      }
+    }
+  }, [messages, isAuthenticated]);
+
+
+  // Auto-scroll to bottom
+  useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
       if (scrollViewport) {
@@ -48,20 +105,6 @@ export default function ChatPage() {
     }
   }, [messages]);
   
-  // Add initial greeting message from AI
-  useEffect(() => {
-    if (isAuthenticated && messages.length === 0) {
-      setMessages([
-        {
-          id: 'initial-greeting',
-          role: 'assistant',
-          content: "Hello! I'm LearnAI, your interactive learning assistant. How can I help you today? You can ask me questions, upload an image, or even use voice!",
-          timestamp: new Date(),
-        }
-      ]);
-    }
-  }, [isAuthenticated, messages.length]);
-
 
   const handleSendMessage = async (text: string, imageDataUri?: string, voiceDataUri?: string) => {
     if (!text && !imageDataUri && !voiceDataUri) return;
@@ -113,7 +156,6 @@ export default function ChatPage() {
 
   const handleFlagResponse = (messageId: string) => {
     const messageToFlag = messages.find(msg => msg.id === messageId && msg.role === 'assistant');
-    // Find the preceding user query for context
     let userQuery = "Could not find original query.";
     const messageIndex = messages.findIndex(msg => msg.id === messageId);
     if (messageIndex > 0) {
@@ -132,7 +174,6 @@ export default function ChatPage() {
   };
 
   const handleAddToStudyGuide = async (messageToSave: ChatMessageType) => {
-    // Find the user query that led to this AI response
     const aiResponseIndex = messages.findIndex(msg => msg.id === messageToSave.id);
     let userQueryMessage: ChatMessageType | undefined;
     if (aiResponseIndex > 0) {
@@ -154,14 +195,12 @@ export default function ChatPage() {
                          (userQueryMessage.audio ? " [Audio attached]" : "");
 
     try {
-      setIsLoading(true); // You might want a specific loading state for this action
+      setIsLoading(true); 
       const result = await createStudyGuideEntryFlow({
         question: questionText,
         aiSummary: messageToSave.content,
       });
       
-      // In a real app, you'd save `result.studyGuideEntry` to a user's study guide list (e.g., in localStorage or a database)
-      // For this example, we'll just show a toast.
       const studyGuides = JSON.parse(localStorage.getItem('studyGuideEntries') || '[]');
       studyGuides.push({ 
         id: Date.now().toString(), 
@@ -184,15 +223,22 @@ export default function ChatPage() {
     }
   };
 
-  const handleSelectHistoryItem = (itemId: string) => {
-    // Placeholder: Load chat history item
-    toast({ title: "Load History", description: `Loading chat history item ${itemId} (not implemented).` });
+  const handleSelectHistoryItem = (messageId: string) => {
+    const selectedMessage = messages.find(m => m.id === messageId);
+    toast({ title: "Load History Item", description: `Selected: "${selectedMessage?.content.substring(0, 50)}..." (not fully implemented).` });
   };
 
   const handleClearHistory = () => {
-    // Placeholder: Clear chat history
-    toast({ title: "Clear History", description: "Chat history cleared (not implemented)." });
-    // setMessages([]); // If history is stored in `messages`
+    const initialGreetingMessage: ChatMessageType = {
+      id: INITIAL_GREETING_ID,
+      role: 'assistant',
+      content: "Hello! I'm LearnAI, your interactive learning assistant. How can I help you today? You can ask me questions, upload an image, or even use voice!",
+      timestamp: new Date(),
+    };
+    setMessages([initialGreetingMessage]);
+    localStorage.removeItem(CHAT_MESSAGES_STORAGE_KEY);
+    // localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify([initialGreetingMessage])); // Optionally save initial greeting
+    toast({ title: "Chat History Cleared", description: "Your current conversation has been cleared." });
   };
   
   if (authLoading) {
@@ -207,7 +253,6 @@ export default function ChatPage() {
   }
   
   if (!isAuthenticated) {
-     // This case should ideally be handled by redirect in useEffect, but as a fallback:
     return (
       <AppShell>
         <div className="flex items-center justify-center h-[calc(100vh-150px)]">
@@ -221,7 +266,6 @@ export default function ChatPage() {
   return (
     <AppShell>
       <div className="flex h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)] border rounded-lg shadow-lg overflow-hidden">
-        {/* Main Chat Area */}
         <div className="flex-1 flex flex-col bg-card">
           <header className="p-4 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -264,10 +308,10 @@ export default function ChatPage() {
           <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
         </div>
 
-        {/* Chat History Panel (Collapsible) */}
         {isHistoryPanelOpen && (
           <div className="w-full md:w-80 lg:w-96 border-l bg-secondary transition-all duration-300 ease-in-out">
             <ChatHistoryPanel 
+              currentChatMessages={messages.filter(msg => msg.role === 'user')} // Pass only user messages for history list
               onSelectHistoryItem={handleSelectHistoryItem}
               onClearHistory={handleClearHistory}
             />
