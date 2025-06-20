@@ -20,7 +20,6 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, onFlagResponse, onAddToStudyGuide }: ChatMessageProps) {
   const isUser = message.role === 'user';
-  const avatarIcon = isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />;
   const avatarFallback = isUser ? 'U' : 'AI';
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -33,66 +32,61 @@ export function ChatMessage({ message, onFlagResponse, onAddToStudyGuide }: Chat
       return;
     }
 
-    if (isPlayingAudio && utteranceRef.current) {
-      speechSynthesis.cancel(); // Stop current speech
-      // onend listener should set isPlayingAudio to false
-    } else {
-      speechSynthesis.cancel(); // Cancel any previously playing/queued speech from other messages
+    if (isPlayingAudio) { // Current state is "playing", user wants to stop
+      speechSynthesis.cancel();
+      setIsPlayingAudio(false); // Explicitly set state to update UI immediately
+      if (utteranceRef.current) { // Clean up the old utterance as it's now stopped
+        utteranceRef.current.onstart = null;
+        utteranceRef.current.onend = null;
+        utteranceRef.current.onerror = null;
+        utteranceRef.current = null;
+      }
+    } else { // Current state is "not playing", user wants to play
+      speechSynthesis.cancel(); // Ensure any previous speech (e.g., from another message) is stopped
 
       const newUtterance = new SpeechSynthesisUtterance(textToSpeak);
-      
+      utteranceRef.current = newUtterance; // Assign new utterance to ref before setting listeners
+
       newUtterance.onstart = () => {
         setIsPlayingAudio(true);
       };
-      newUtterance.onend = () => {
+      newUtterance.onend = () => { // Fires on natural end or after a successful cancel that triggers onend
         setIsPlayingAudio(false);
-        if (utteranceRef.current === newUtterance) { // Ensure we only nullify if it's the current one
+        if (utteranceRef.current === newUtterance) { // Check if it's still the current one
           utteranceRef.current = null;
         }
       };
-      newUtterance.onerror = (event) => {
+      newUtterance.onerror = (event) => { // Fires on error
         console.error('SpeechSynthesisUtterance.onerror', event);
         toast({ title: "Audio Error", description: "Could not play audio.", variant: "destructive" });
         setIsPlayingAudio(false);
-         if (utteranceRef.current === newUtterance) {
+        if (utteranceRef.current === newUtterance) {
           utteranceRef.current = null;
         }
       };
-      
-      utteranceRef.current = newUtterance;
       speechSynthesis.speak(newUtterance);
     }
   };
 
   useEffect(() => {
-    // Cleanup function to cancel speech synthesis when the component unmounts
-    // or if the message content changes and it was speaking.
+    // This effect handles cleanup if `isPlayingAudio` changes (e.g. due to speech naturally ending)
+    // or if the component unmounts while speech was active.
+    const currentUtterance = utteranceRef.current;
     return () => {
-      if (utteranceRef.current && speechSynthesis.speaking) {
-         // Check if the utterance being spoken is the one from this component instance
-        if (speechSynthesis.getVoices().length > 0) { // Ensure voices are loaded before trying to match
-             // This is a bit of a hack; direct comparison of utterance instance might be better
-             // but cancel() is global anyway.
-        }
-        // Only cancel if this specific utterance is speaking.
-        // However, cancel() is global, so if this component unmounts and it initiated *any* speech,
-        // it might be best to cancel to avoid orphaned speech.
-        // Check if the current utterance is the one speaking:
-        // A more robust check would involve an ID or comparing the text,
-        // but `speechSynthesis.speaking` and `utteranceRef.current` is a good heuristic.
-        if(isPlayingAudio) { // Only cancel if this instance thought it was playing
-            speechSynthesis.cancel();
-        }
-
+      if (speechSynthesis.speaking && currentUtterance === utteranceRef.current) {
+        // If speech is active and pertains to the utterance managed by this component instance,
+        // and the component is unmounting or isPlayingAudio is changing, cancel it.
+        speechSynthesis.cancel();
       }
-      // Detach listeners to prevent memory leaks
-      if (utteranceRef.current) {
-        utteranceRef.current.onstart = null;
-        utteranceRef.current.onend = null;
-        utteranceRef.current.onerror = null;
+      // Always detach listeners from the utterance this effect instance knew about
+      // to prevent memory leaks if it's still referenced.
+      if (currentUtterance) {
+        currentUtterance.onstart = null;
+        currentUtterance.onend = null;
+        currentUtterance.onerror = null;
       }
     };
-  }, [isPlayingAudio]); // Rerun if isPlayingAudio changes to ensure correct cleanup logic
+  }, [isPlayingAudio, message.id]); // message.id ensures effect re-runs if message changes, cancelling old audio
 
   return (
     <div className={cn('flex items-start gap-3 my-4', isUser ? 'justify-end' : 'justify-start')}>
