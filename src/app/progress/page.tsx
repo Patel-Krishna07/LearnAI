@@ -7,8 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Award, BarChart3, Brain, Compass, Diamond, GraduationCap, ShieldCheck, Sparkles, Star, Trophy, Zap } from 'lucide-react';
+import { Award, BarChart3, Brain, Compass, Diamond, GraduationCap, ShieldCheck, Sparkles, Star, Trophy, Zap, ListChecks, ToggleRight, Link2, PenLine, Timer, CheckCircle2, XCircle } from 'lucide-react';
 import type { User, LeaderboardUser, BadgeDefinition as BadgeDefinitionType } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,7 +22,7 @@ const badgeIcons: { [key: string]: LucideIcon } = {
   'Explorer': Compass,
   'Scholar': GraduationCap,
   'Sage': Brain,
-  'Achiever': Award, // Example of another badge if thresholds were different
+  'Achiever': Award,
   'Master': Diamond,
 };
 
@@ -40,12 +42,10 @@ export default function ProgressPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      // Load leaderboard data from localStorage
       const storedLeaderboardJson = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
       if (storedLeaderboardJson) {
         try {
           const parsedLeaderboard = JSON.parse(storedLeaderboardJson) as LeaderboardUser[];
-          // Sort by points descending
           parsedLeaderboard.sort((a, b) => (b.points || 0) - (a.points || 0));
           setLeaderboard(parsedLeaderboard);
         } catch (e) {
@@ -55,7 +55,7 @@ export default function ProgressPage() {
       }
       setPageLoading(false);
     }
-  }, [isAuthenticated, user]); // Rerun if user changes, e.g., points update
+  }, [isAuthenticated, user]);
 
   if (authLoading || (pageLoading && isAuthenticated)) {
     return (
@@ -82,7 +82,7 @@ export default function ProgressPage() {
     .filter(def => user.badges.includes(def.name))
     .map(def => ({
         ...def,
-        icon: badgeIcons[def.name] || ShieldCheck // Default icon
+        icon: badgeIcons[def.name] || ShieldCheck
     }));
 
   return (
@@ -156,7 +156,7 @@ export default function ProgressPage() {
                         <TableCell className="text-right font-semibold">{lbUser.points}</TableCell>
                         <TableCell className="text-center">
                           <div className="flex justify-center items-center gap-1">
-                            {(lbUser.badges || []).slice(0,3).map(badgeName => { // Show max 3 badges
+                            {(lbUser.badges || []).slice(0,3).map(badgeName => {
                                 const BadgeIcon = badgeIcons[badgeName] || Star;
                                 return <BadgeIcon key={badgeName} className="h-4 w-4 text-muted-foreground" title={badgeName}/>;
                             })}
@@ -178,6 +178,140 @@ export default function ProgressPage() {
             <p className="text-xs text-muted-foreground">Leaderboard data is stored locally in your browser.</p>
           </CardFooter>
         </Card>
+
+        {/* Interactive Challenges Section */}
+        <section className="space-y-8">
+          <header className="text-center">
+            <h2 className="text-3xl font-bold font-headline">Interactive Challenges</h2>
+            <p className="text-md text-muted-foreground">Sharpen your skills with these mini-games!</p>
+          </header>
+
+          {/* 1. Quick Multiple Choice (MCQs) */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl font-headline flex items-center gap-2">
+                <ListChecks className="text-primary h-6 w-6" /> Quick MCQs
+              </CardTitle>
+              <CardDescription>Test your knowledge with multiple choice questions.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="font-semibold">What is the powerhouse of the cell?</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button variant="outline">a) Nucleus</Button>
+                <Button variant="outline">b) Ribosome</Button>
+                <Button variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">c) Mitochondria <CheckCircle2 className="ml-2 h-4 w-4 text-green-500"/></Button>
+                <Button variant="outline">d) Cell wall</Button>
+              </div>
+              <p className="text-sm text-muted-foreground italic">Static example. Full interactivity to be added.</p>
+            </CardContent>
+            <CardFooter>
+                <Button disabled>Generate New MCQ (Coming Soon)</Button>
+            </CardFooter>
+          </Card>
+
+          {/* 2. True/False Challenges */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl font-headline flex items-center gap-2">
+                <ToggleRight className="text-primary h-6 w-6" /> True/False Challenges
+              </CardTitle>
+              <CardDescription>Quick decision-making for warmups.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-md">
+                  <p>The Sun is a planet.</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">True</Button>
+                    <Button variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600"><XCircle className="mr-1 h-4 w-4"/> False</Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-md">
+                  <p>Water boils at 100°C at sea level.</p>
+                  <div className="flex gap-2">
+                    <Button variant="default" size="sm" className="bg-green-500 hover:bg-green-600"><CheckCircle2 className="mr-1 h-4 w-4"/> True</Button>
+                    <Button variant="outline" size="sm">False</Button>
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground italic">Static example. Full interactivity to be added.</p>
+            </CardContent>
+             <CardFooter>
+                <Button disabled>New True/False (Coming Soon)</Button>
+            </CardFooter>
+          </Card>
+
+          {/* 3. Match the Pairs */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl font-headline flex items-center gap-2">
+                <Link2 className="text-primary h-6 w-6" /> Match the Pairs
+              </CardTitle>
+              <CardDescription>Connect terms to their meanings or associations.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="font-semibold">Match the following terms:</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                <div className="p-2 border rounded-md bg-background"><strong>Term:</strong> Photosynthesis</div>
+                <div className="p-2 border rounded-md bg-background"><strong>Meaning:</strong> Plant energy process</div>
+                <div className="p-2 border rounded-md bg-background"><strong>Term:</strong> Mitochondria</div>
+                <div className="p-2 border rounded-md bg-background"><strong>Meaning:</strong> Powerhouse of the cell</div>
+                <div className="p-2 border rounded-md bg-background"><strong>Term:</strong> H₂O</div>
+                <div className="p-2 border rounded-md bg-background"><strong>Meaning:</strong> Water</div>
+                <div className="p-2 border rounded-md bg-background"><strong>Term:</strong> DNA</div>
+                <div className="p-2 border rounded-md bg-background"><strong>Meaning:</strong> Genetic material</div>
+              </div>
+              <p className="text-sm text-muted-foreground italic">Static example. Draggable matching UI to be added.</p>
+            </CardContent>
+            <CardFooter>
+                <Button disabled>New Matching Game (Coming Soon)</Button>
+            </CardFooter>
+          </Card>
+
+          {/* 4. "Fill in the Blank" Mini-Quizzes */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl font-headline flex items-center gap-2">
+                <PenLine className="text-primary h-6 w-6" /> Fill in the Blank
+              </CardTitle>
+              <CardDescription>Type a word or number to complete the sentence.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span>5 + 7 = </span> <Input type="text" placeholder="Your answer" className="w-24 h-8" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>The capital of France is </span> <Input type="text" placeholder="Your answer" className="w-36 h-8" />
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground italic">Static example. Input validation and AI flexible matching to be added.</p>
+            </CardContent>
+            <CardFooter>
+                <Button disabled>New Fill-in-Blank (Coming Soon)</Button>
+            </CardFooter>
+          </Card>
+
+          {/* 5. Timed Brain Boosters */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl font-headline flex items-center gap-2">
+                <Timer className="text-primary h-6 w-6" /> Timed Brain Boosters
+              </CardTitle>
+              <CardDescription>Answer quickly to build urgency!</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="font-semibold">You have 20 seconds to answer: What is 3³?</p>
+              <Input type="text" placeholder="Your answer" className="h-10"/>
+              <div className="text-lg font-bold text-destructive">Time left: 15s</div>
+              <p className="text-sm text-muted-foreground italic">Static example. Timer functionality and answer checking to be added.</p>
+            </CardContent>
+            <CardFooter>
+                <Button disabled>Start Timed Challenge (Coming Soon)</Button>
+            </CardFooter>
+          </Card>
+
+        </section>
       </div>
     </AppShell>
   );
