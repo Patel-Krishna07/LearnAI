@@ -145,6 +145,15 @@ export default function ChatPage() {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
+
+      if (aiResponse.navigationTarget) {
+        toast({
+          title: "Navigating...",
+          description: `Taking you to ${aiResponse.navigationTarget}`,
+        });
+        router.push(aiResponse.navigationTarget);
+      }
+
     } catch (error) {
       console.error('Error calling multimodalQuery:', error);
       toast({
