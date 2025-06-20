@@ -37,7 +37,7 @@ export const generateImageFromTextTool = ai.defineTool(
       if (media && media.url) {
         return { imageDataUri: media.url };
       } else {
-        return { error: text || 'Image generation did not return an image.' };
+        return { error: text || 'Image generation did not return an image or a specific error message.' };
       }
     } catch (e: any) {
       console.error("Error in generateImageFromTextTool:", e);

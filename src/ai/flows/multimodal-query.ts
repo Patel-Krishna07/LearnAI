@@ -55,8 +55,14 @@ You can receive queries in text, voice, or image format.
 
 **Image Generation Task:**
 If the user's query is a request to generate a new image (e.g., "draw a cat", "generate an image of a sunset", "create a picture of a futuristic city"), you MUST use the 'generateImageFromTextTool'.
-- The tool will return an 'imageDataUri' or an 'error'. If an 'imageDataUri' is returned, place this 'imageDataUri' into the 'visualAid' field of your output.
-- Your 'response' field should be a short confirmation, like "Certainly, here is the image of [subject]:" or "I've generated the image you asked for." If the tool returns an error, your 'response' field should convey that error message.
+- The 'generateImageFromTextTool' will return an object.
+- If this object contains an 'imageDataUri' field with a string value (e.g., "data:image/..."), you MUST:
+    1. Place this string value into the 'visualAid' field of your output.
+    2. Set your 'response' field to a short confirmation, like "Certainly, here is the image of [subject]:" or "I've generated the image you asked for."
+- If the tool's output object contains an 'error' field with a message, you MUST:
+    1. Set your 'response' field to convey that error message (e.g., "Sorry, I couldn't generate the image: [error message from tool]").
+    2. Ensure the 'visualAid' field in your output is null or not present.
+- Do NOT put the tool's entire output object (or any other complex object) into any field of your response. Only use the specific string values as instructed.
 
 **Other Queries (Q&A, Explanations, etc.):**
 For all other types of queries (questions, requests for explanations, analysis of provided images/voice):
@@ -76,7 +82,7 @@ Voice: {{media url=voiceDataUri}}
 Image: {{media url=imageDataUri}}
 {{/if}}
 
-Response format: Respond in a way that is helpful to students. Ensure your output strictly follows the MultimodalQueryOutputSchema. If an image is generated successfully, include it in visualAid. If image generation fails, provide the error in the response text and leave visualAid empty.
+Response format: Respond in a way that is helpful to students. Ensure your output strictly follows the MultimodalQueryOutputSchema. If an image is generated successfully by the tool, include its 'imageDataUri' value in your 'visualAid' field. If image generation fails or the tool returns an error, provide the error in the 'response' text and leave 'visualAid' empty or null.
 `,
 });
 
@@ -91,4 +97,3 @@ const multimodalQueryFlow = ai.defineFlow(
     return output!;
   }
 );
-
