@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { PanelRightOpen, PanelRightClose, Bot, Sparkles } from 'lucide-react';
 import type { ChatMessage as ChatMessageType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { multimodalQuery } from '@/ai/flows/multimodal-query';
+import { multimodalQuery, MultimodalQueryInput } from '@/ai/flows/multimodal-query';
 import { createStudyGuideEntry as createStudyGuideEntryFlow } from '@/ai/flows/ai-study-guide';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -24,6 +24,7 @@ import { POINTS_FOR_STUDY_GUIDE_ADD } from '@/lib/constants';
 
 const CHAT_MESSAGES_STORAGE_KEY = 'learnai-current-chatMessages';
 const INITIAL_GREETING_ID = 'initial-greeting';
+const MAX_HISTORY_MESSAGES_TO_SEND = 15; // Number of past messages to send for context
 
 export default function ChatPage() {
   const { isAuthenticated, loading: authLoading, addPoints, user } = useAuth();
@@ -114,15 +115,27 @@ export default function ChatPage() {
       audio: voiceDataUri,
       timestamp: new Date(),
     };
+    
+    // Prepare history before adding the new user message to the state
+    const historyForAI = messages
+      .slice(-MAX_HISTORY_MESSAGES_TO_SEND) // Get the last N messages
+      .map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString(), // Convert Date to ISO string
+      }));
+
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
     try {
-      const aiResponse = await multimodalQuery({
+      const aiInput: MultimodalQueryInput = {
         textQuery: text,
         imageDataUri: imageDataUri,
         voiceDataUri: voiceDataUri,
-      });
+        chatHistory: historyForAI.length > 0 ? historyForAI : undefined,
+      };
+      const aiResponse = await multimodalQuery(aiInput);
 
       const assistantMessage: ChatMessageType = {
         id: (Date.now() + 1).toString(),
@@ -333,3 +346,4 @@ export default function ChatPage() {
     </AppShell>
   );
 }
+

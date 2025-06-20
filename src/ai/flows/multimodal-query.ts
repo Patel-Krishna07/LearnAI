@@ -3,7 +3,7 @@
 'use server';
 
 /**
- * @fileOverview A multimodal AI assistant for answering student queries.
+ * @fileOverview A multimodal AI assistant for answering student queries, with contextual memory.
  *
  * - multimodalQuery - A function that handles the multimodal query process.
  * - MultimodalQueryInput - The input type for the multimodalQuery function.
@@ -13,6 +13,12 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { generateImageFromTextTool } from '@/ai/flows/generate-image-tool';
+
+const ChatHistoryMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+  timestamp: z.string().describe('ISO 8601 timestamp of the message'),
+});
 
 const MultimodalQueryInputSchema = z.object({
   textQuery: z.string().optional().describe('The text-based query from the student.'),
@@ -28,6 +34,10 @@ const MultimodalQueryInputSchema = z.object({
     .describe(
       "The image query from the student, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
+  chatHistory: z
+    .array(ChatHistoryMessageSchema)
+    .optional()
+    .describe('Recent messages from the conversation history to provide context. "User" is the student, "Assistant" is you (the AI).'),
 });
 export type MultimodalQueryInput = z.infer<typeof MultimodalQueryInputSchema>;
 
@@ -53,6 +63,15 @@ const multimodalQueryPrompt = ai.definePrompt({
   prompt: `You are an AI assistant designed to help students with their queries.
 You can receive queries in text, voice, or image format.
 
+{{#if chatHistory}}
+Here is some recent context from your ongoing conversation with the student (timestamps are in ISO 8601 format). "User" is the student, "Assistant" is you:
+{{#each chatHistory}}
+{{role}} (at {{timestamp}}): {{{content}}}
+{{/each}}
+
+Use this history if the student's current query refers to previous parts of the discussion (e.g., "what did you say about X?", "explain that again", "what we discussed yesterday").
+{{/if}}
+
 **Image Generation Task:**
 If the user's query is a request to generate a new image (e.g., "draw a cat", "generate an image of a sunset", "create a picture of a futuristic city"), you MUST use the 'generateImageFromTextTool'.
 - The 'generateImageFromTextTool' will return an object.
@@ -71,7 +90,7 @@ For all other types of queries (questions, requests for explanations, analysis o
 
 If the user submits a picture, try to understand what the user wants to know about that picture, and formulate your response accordingly.
 
-Here's the student's query:
+Here's the student's current query:
 {{#if textQuery}}
 Text: {{{textQuery}}}
 {{/if}}
@@ -97,3 +116,4 @@ const multimodalQueryFlow = ai.defineFlow(
     return output!;
   }
 );
+
