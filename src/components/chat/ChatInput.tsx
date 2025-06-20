@@ -1,10 +1,12 @@
+
 "use client";
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Mic, Image as ImageIcon, Send, Paperclip, X } from 'lucide-react';
+import { Mic, Send, Paperclip, X, StopCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image'; // Corrected: Added Image import
 
 interface ChatInputProps {
   onSendMessage: (text: string, imageDataUri?: string, voiceDataUri?: string) => void;
@@ -16,8 +18,11 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  // Voice input state and logic would go here
-  // const [isRecording, setIsRecording] = useState(false);
+  
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedAudioBlob, setRecordedAudioBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const { toast } = useToast();
 
@@ -45,38 +50,127 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
     setImageFile(null);
     setImagePreview(null);
     if (imageInputRef.current) {
-      imageInputRef.current.value = ""; // Reset file input
+      imageInputRef.current.value = ""; 
+    }
+  };
+
+  const resetVoiceRecording = () => {
+    setRecordedAudioBlob(null);
+    audioChunksRef.current = [];
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
+  };
+
+  const handleMicToggle = async () => {
+    if (isRecording) {
+      // Stop recording
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecording(false);
+      // onstop event will handle setting the blob
+    } else {
+      // Start recording
+      setRecordedAudioBlob(null); // Clear any previous recording
+      audioChunksRef.current = [];
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorderRef.current = new MediaRecorder(stream);
+        
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorderRef.current.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Or appropriate MIME type
+          setRecordedAudioBlob(audioBlob);
+          audioChunksRef.current = [];
+           // Stop tracks to turn off microphone indicator
+          stream.getTracks().forEach(track => track.stop());
+        };
+        
+        mediaRecorderRef.current.start();
+        setIsRecording(true);
+        toast({ title: "Recording started", description: "Click the mic again to stop." });
+      } catch (error) {
+        console.error('Error accessing microphone:', error);
+        toast({ title: "Microphone Error", description: "Could not access microphone. Please check permissions.", variant: "destructive" });
+        setIsRecording(false);
+      }
     }
   };
   
   const handleSend = async () => {
-    if (!text.trim() && !imageFile) { // Add !voiceFile when implemented
+    if (!text.trim() && !imageFile && !recordedAudioBlob) {
       toast({ title: "Cannot send empty message", description: "Please type a message, upload an image, or record audio.", variant: "destructive" });
       return;
     }
 
-    let imageDataUri: string | undefined = undefined;
-    if (imageFile) {
-      imageDataUri = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(imageFile);
-      });
+    if (isRecording) {
+      // If user clicks send while recording, stop recording first.
+      // The actual sending will happen once the blob is processed in onstop,
+      // so we might need a way to signal handleSend to wait or to pick up the processed audio.
+      // For simplicity now, let's ask user to stop recording first.
+      // Or, let current implementation of handleMicToggle handle setting recordedAudioBlob.
+      // User has to click Mic again to finalize audio, then click Send.
+      // Let's make Send button finalize if recording.
+       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.onstop = async () => { // Override onstop to send immediately
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            audioChunksRef.current = [];
+            mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+
+            const voiceDataUri = await blobToDataURI(audioBlob);
+            const currentImageDataUri = imageFile ? await blobToDataURI(imageFile) : undefined;
+            onSendMessage(text.trim(), currentImageDataUri, voiceDataUri);
+            
+            setText('');
+            removeImage();
+            setRecordedAudioBlob(null); // Clear after sending
+            setIsRecording(false);
+        };
+        mediaRecorderRef.current.stop();
+        return; // Return here as onstop will handle the sending
+      }
     }
     
-    // Placeholder for voiceDataUri
-    onSendMessage(text.trim(), imageDataUri, undefined);
+    let imageDataUri: string | undefined = undefined;
+    if (imageFile) {
+      imageDataUri = await blobToDataURI(imageFile);
+    }
+
+    let voiceDataUri: string | undefined = undefined;
+    if (recordedAudioBlob) {
+      voiceDataUri = await blobToDataURI(recordedAudioBlob);
+    }
+    
+    onSendMessage(text.trim(), imageDataUri, voiceDataUri);
     setText('');
     removeImage();
+    setRecordedAudioBlob(null); // Clear after sending
   };
 
-  const handleVoiceInput = () => {
-    // Placeholder for voice input functionality
-    toast({ title: "Voice Input", description: "Voice input is not implemented yet." });
-    // setIsRecording(!isRecording);
-    // Logic for starting/stopping recording and converting to data URI
+  const blobToDataURI = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          resolve(reader.result as string);
+        } else {
+          reject(new Error("Failed to convert blob to Data URI"));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   };
 
+  const canSend = !isLoading && (!!text.trim() || !!imageFile || !!recordedAudioBlob || isRecording);
 
   return (
     <div className="p-4 border-t bg-background shadow- ऊपर">
@@ -94,6 +188,14 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
           </Button>
         </div>
       )}
+       {recordedAudioBlob && !isRecording && (
+        <div className="mb-2 p-2 border rounded-md flex items-center justify-between bg-secondary">
+          <span className="text-sm text-secondary-foreground">Voice message ready</span>
+          <Button variant="ghost" size="icon" onClick={() => setRecordedAudioBlob(null)} aria-label="Remove voice message">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
       <div className="flex items-end gap-2">
         <Textarea
           value={text}
@@ -102,12 +204,13 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
           className="flex-1 resize-none min-h-[52px] max-h-[200px] rounded-lg shadow-sm"
           rows={1}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter' && !e.shiftKey && canSend) {
               e.preventDefault();
               handleSend();
             }
           }}
           aria-label="Chat message input"
+          disabled={isLoading}
         />
         <input 
           type="file" 
@@ -116,17 +219,34 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
           onChange={handleImageChange} 
           className="hidden"
           id="image-upload"
+          disabled={isLoading || isRecording}
         />
-        <Button variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isLoading} aria-label="Upload image">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => imageInputRef.current?.click()} 
+          disabled={isLoading || isRecording} 
+          aria-label="Upload image"
+        >
           <Paperclip className="h-5 w-5 text-accent" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={handleVoiceInput} disabled={isLoading} aria-label="Record voice message">
-          <Mic className="h-5 w-5 text-accent" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleMicToggle} 
+          disabled={isLoading} 
+          aria-label={isRecording ? "Stop recording" : "Record voice message"}
+          className={isRecording ? "text-red-500" : "text-accent"}
+        >
+          {isRecording ? <StopCircle className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </Button>
-        <Button onClick={handleSend} disabled={isLoading || (!text.trim() && !imageFile)} size="icon" aria-label="Send message">
+        <Button onClick={handleSend} disabled={!canSend} size="icon" aria-label="Send message">
           <Send className="h-5 w-5" />
         </Button>
       </div>
+      {isRecording && (
+        <p className="text-xs text-red-500 mt-1 text-center">Recording audio...</p>
+      )}
     </div>
   );
 }

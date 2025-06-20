@@ -1,3 +1,4 @@
+
 // This is an AI-powered chatbot designed for students to answer their queries through text, voice, and images.
 'use server';
 
@@ -34,7 +35,7 @@ const MultimodalQueryOutputSchema = z.object({
   visualAid: z
     .string()
     .optional()
-    .describe('A data URI containing a visual aid, such as a chart or diagram.'),
+    .describe('A data URI containing a visual aid, such as a chart or diagram. This should only be populated if explicitly requested by the user.'),
 });
 export type MultimodalQueryOutput = z.infer<typeof MultimodalQueryOutputSchema>;
 
@@ -50,7 +51,9 @@ const multimodalQueryPrompt = ai.definePrompt({
 
 You can receive queries in text, voice, or image format.
 
-Based on the input, provide a relevant and informative response. If the user asks for a chart, diagram, or other visual aid, then generate one. If the user submits a picture, try to understand what the user wants to know about that picture, and formulate your response accordingly.
+Based on the input, provide a relevant and informative response. **Only generate a visual aid (e.g., a chart or diagram) and populate the visualAid output field if the student explicitly asks for "visual aid", "chart", "diagram", "graph", or "picture" in their text query.** Otherwise, leave the visualAid field empty or undefined.
+
+If the user submits a picture, try to understand what the user wants to know about that picture, and formulate your response accordingly.
 
 Here's the student's query:
 
@@ -66,7 +69,7 @@ Voice: {{media url=voiceDataUri}}
 Image: {{media url=imageDataUri}}
 {{/if}}
 
-Response format: Respond in a way that is helpful to students. Generate a visual aid if appropriate, and include it in the visualAid output field.`,
+Response format: Respond in a way that is helpful to students.`,
 });
 
 const multimodalQueryFlow = ai.defineFlow(
@@ -80,3 +83,4 @@ const multimodalQueryFlow = ai.defineFlow(
     return output!;
   }
 );
+
