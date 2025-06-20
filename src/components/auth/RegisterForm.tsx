@@ -10,12 +10,23 @@ import { RegisterSchema, type RegisterFormData } from '@/lib/schemas';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import type { User } from '@/lib/types';
+import type { User, LeaderboardUser } from '@/lib/types';
+import { BADGE_DEFINITIONS } from '@/lib/constants';
+
 
 // Define a type for stored users that includes the password
-interface StoredUser extends User {
+interface StoredRegisteredUser extends User {
   password?: string; // Password stored for login check, NOT for general use
 }
+
+const getInitialBadges = (points: number): string[] => {
+  return BADGE_DEFINITIONS
+    .filter(badge => points >= badge.pointsThreshold)
+    .map(badge => badge.name);
+};
+
+const LEARN_AI_REGISTERED_USERS_KEY = 'learnai-registered-users';
+const LEARN_AI_LEADERBOARD_KEY = 'learnai-leaderboard-users';
 
 export function RegisterForm() {
   const { toast } = useToast();
@@ -34,17 +45,13 @@ export function RegisterForm() {
 
   async function onSubmit(data: RegisterFormData) {
     setIsLoading(true);
-    // Simulate API call for registration
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // In a real app, you would call your backend API here to create the user.
-    // For this prototype, we'll use localStorage.
-    // IMPORTANT: Storing passwords in localStorage is NOT secure for production.
     try {
-      const existingUsersJSON = localStorage.getItem('learnai-registered-users');
-      const existingUsers: StoredUser[] = existingUsersJSON ? JSON.parse(existingUsersJSON) : [];
+      const existingRegisteredUsersJSON = localStorage.getItem(LEARN_AI_REGISTERED_USERS_KEY);
+      const existingRegisteredUsers: StoredRegisteredUser[] = existingRegisteredUsersJSON ? JSON.parse(existingRegisteredUsersJSON) : [];
 
-      if (existingUsers.find(user => user.email === data.email)) {
+      if (existingRegisteredUsers.find(user => user.email === data.email)) {
         toast({
           title: 'Registration Failed',
           description: 'This email address is already registered.',
@@ -53,22 +60,40 @@ export function RegisterForm() {
         setIsLoading(false);
         return;
       }
+      
+      const initialPoints = 0;
+      const initialBadges = getInitialBadges(initialPoints);
 
-      const newUser: StoredUser = {
-        id: String(Date.now()), // Simple ID generation
+      const newUserForRegistration: StoredRegisteredUser = {
+        id: String(Date.now()),
         name: data.name,
         email: data.email,
-        password: data.password, // Storing password for login check (unsafe for production)
+        password: data.password, 
+        points: initialPoints,
+        badges: initialBadges,
       };
 
-      existingUsers.push(newUser);
-      localStorage.setItem('learnai-registered-users', JSON.stringify(existingUsers));
+      existingRegisteredUsers.push(newUserForRegistration);
+      localStorage.setItem(LEARN_AI_REGISTERED_USERS_KEY, JSON.stringify(existingRegisteredUsers));
+
+      // Add to leaderboard storage
+      const existingLeaderboardUsersJSON = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
+      const existingLeaderboardUsers: LeaderboardUser[] = existingLeaderboardUsersJSON ? JSON.parse(existingLeaderboardUsersJSON) : [];
+      
+      const newUserForLeaderboard: LeaderboardUser = {
+        id: newUserForRegistration.id,
+        name: newUserForRegistration.name || "Anonymous",
+        points: initialPoints,
+        badges: initialBadges,
+      };
+      existingLeaderboardUsers.push(newUserForLeaderboard);
+      localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(existingLeaderboardUsers));
 
       toast({
         title: 'Registration Successful',
         description: "You can now log in with your credentials.",
       });
-      router.push('/login'); // Redirect to login page
+      router.push('/login');
     } catch (error) {
       console.error("Error during registration:", error);
       toast({

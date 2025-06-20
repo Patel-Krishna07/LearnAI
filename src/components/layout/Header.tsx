@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { APP_NAME, MAIN_NAV_LINKS, AUTH_NAV_LINKS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LogOut, UserCircle, NotebookText, Feather } from 'lucide-react';
+import { Menu, LogOut, UserCircle, NotebookText, Feather, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -20,7 +20,7 @@ export function Header() {
     router.push('/'); 
   };
 
-  if (loading) {
+  if (loading && !isAuthenticated) { // Show simpler loading if not yet authenticated
     return (
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
@@ -34,6 +34,7 @@ export function Header() {
     );
   }
 
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center">
@@ -44,6 +45,7 @@ export function Header() {
         
         <nav className="hidden md:flex flex-1 items-center space-x-6 text-sm font-medium">
           {MAIN_NAV_LINKS.map((link) => (
+             (isAuthenticated || (link.href !== '/progress' && link.href !== '/study-guide' && link.href !== '/practice' && link.href !== '/chat')) && // Show all links if authenticated, else limited links
             <Link
               key={link.label}
               href={link.href}
@@ -54,7 +56,20 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex flex-1 items-center justify-end space-x-4">
+        <div className="flex flex-1 items-center justify-end space-x-2 sm:space-x-4">
+          {isAuthenticated && user && (
+             <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 sm:gap-2 px-2 py-1 rounded-md bg-accent/10 text-accent text-xs sm:text-sm font-medium cursor-default">
+                  <Star className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>{user.points} pts</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Your current points</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
           {isAuthenticated ? (
             <>
               <span className="hidden sm:inline text-sm text-muted-foreground">Welcome, {user?.name || 'User'}</span>
@@ -70,13 +85,15 @@ export function Header() {
               </Tooltip>
             </>
           ) : (
-            <nav className="hidden md:flex items-center space-x-2">
-              {AUTH_NAV_LINKS.map((link) => (
-                <Button key={link.label} variant={link.href === '/register' ? "default" : "outline"} asChild>
-                  <Link href={link.href}>{link.label}</Link>
-                </Button>
-              ))}
-            </nav>
+            !loading && ( // Only show auth links if not loading
+              <nav className="hidden md:flex items-center space-x-2">
+                {AUTH_NAV_LINKS.map((link) => (
+                  <Button key={link.label} variant={link.href === '/register' ? "default" : "outline"} asChild>
+                    <Link href={link.href}>{link.label}</Link>
+                  </Button>
+                ))}
+              </nav>
+            )
           )}
           <Sheet>
             <Tooltip>
@@ -98,6 +115,7 @@ export function Header() {
               </Link>
               <div className="flex flex-col space-y-3">
                 {MAIN_NAV_LINKS.map((link) => (
+                   (isAuthenticated || (link.href !== '/progress' && link.href !== '/study-guide' && link.href !== '/practice' && link.href !== '/chat')) &&
                   <Link
                     key={link.label}
                     href={link.href}
@@ -107,7 +125,7 @@ export function Header() {
                   </Link>
                 ))}
                 <hr className="my-4" />
-                {!isAuthenticated && AUTH_NAV_LINKS.map((link) => (
+                {!isAuthenticated && !loading && AUTH_NAV_LINKS.map((link) => (
                   <Button key={link.label} variant="outline" asChild className="w-full text-lg py-6">
                     <Link href={link.href}>{link.label}</Link>
                   </Button>

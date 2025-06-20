@@ -12,11 +12,20 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { User } from '@/lib/types';
+import { BADGE_DEFINITIONS } from '@/lib/constants';
 
 // Define a type for stored users that includes the password
-interface StoredUser extends User {
+interface StoredRegisteredUser extends User {
   password?: string;
 }
+
+const LEARN_AI_REGISTERED_USERS_KEY = 'learnai-registered-users';
+
+const getInitialBadges = (points: number): string[] => {
+  return BADGE_DEFINITIONS
+    .filter(badge => points >= badge.pointsThreshold)
+    .map(badge => badge.name);
+};
 
 export function LoginForm() {
   const { login } = useAuth();
@@ -34,26 +43,27 @@ export function LoginForm() {
 
   async function onSubmit(data: LoginFormData) {
     setIsLoading(true);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Check credentials against localStorage
-    // IMPORTANT: This is NOT secure for production.
     try {
-      const storedUsersJSON = localStorage.getItem('learnai-registered-users');
-      const storedUsers: StoredUser[] = storedUsersJSON ? JSON.parse(storedUsersJSON) : [];
+      const storedUsersJSON = localStorage.getItem(LEARN_AI_REGISTERED_USERS_KEY);
+      const storedUsers: StoredRegisteredUser[] = storedUsersJSON ? JSON.parse(storedUsersJSON) : [];
       
       const foundUser = storedUsers.find(user => user.email === data.email);
 
       if (foundUser && foundUser.password === data.password) {
-        // Password matches. Prepare user data for AuthContext (without password)
+        const points = typeof foundUser.points === 'number' ? foundUser.points : 0;
+        const badges = Array.isArray(foundUser.badges) ? foundUser.badges : getInitialBadges(points);
+
         const userToLogin: User = {
           id: foundUser.id,
           email: foundUser.email,
           name: foundUser.name,
-          image: foundUser.image, // if you store image during registration
+          image: foundUser.image, 
+          points: points,
+          badges: badges,
         };
-        login(userToLogin);
+        login(userToLogin); // AuthContext login will handle setting its own state
         toast({ title: 'Login Successful', description: 'Welcome back!' });
         
         const queryParams = new URLSearchParams(window.location.search);

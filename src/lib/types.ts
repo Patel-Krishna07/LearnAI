@@ -4,6 +4,8 @@ export interface User {
   name?: string | null;
   email?: string | null;
   image?: string | null; // For profile picture
+  points: number;
+  badges: string[]; // Names of earned badges
 }
 
 export interface ChatMessage {
@@ -29,3 +31,10 @@ export interface PracticeExercise {
   answer: string;
 }
 
+// For the localStorage leaderboard
+export interface LeaderboardUser {
+  id: string;
+  name: string;
+  points: number;
+  badges: string[];
+}

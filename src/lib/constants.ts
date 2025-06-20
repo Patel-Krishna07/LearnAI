@@ -1,4 +1,4 @@
-import { MessageSquareText, PenSquare, BookMarked, Settings, LogOut, UserCircle } from 'lucide-react';
+import { MessageSquareText, PenSquare, BookMarked, Settings, LogOut, UserCircle, Trophy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const APP_NAME = 'LearnAI';
@@ -13,6 +13,7 @@ export const MAIN_NAV_LINKS: NavLink[] = [
   { href: '/chat', label: 'Chat', icon: MessageSquareText },
   { href: '/practice', label: 'Practice', icon: PenSquare },
   { href: '/study-guide', label: 'Study Guide', icon: BookMarked },
+  { href: '/progress', label: 'Progress', icon: Trophy },
 ];
 
 export const USER_NAV_LINKS = (userId: string | number): NavLink[] => [ // Example, if profile page is needed
@@ -23,4 +24,21 @@ export const USER_NAV_LINKS = (userId: string | number): NavLink[] => [ // Examp
 export const AUTH_NAV_LINKS = [
   { href: '/login', label: 'Login' },
   { href: '/register', label: 'Register' },
+];
+
+export const POINTS_FOR_PRACTICE_GENERATION = 10;
+export const POINTS_FOR_STUDY_GUIDE_ADD = 5;
+
+export interface BadgeDefinition {
+  name: string;
+  pointsThreshold: number;
+  icon: LucideIcon; // Will be assigned in Progress page for simplicity
+  description: string;
+}
+
+export const BADGE_DEFINITIONS: Omit<BadgeDefinition, 'icon'>[] = [
+  { name: 'Initiate', pointsThreshold: 0, description: 'Welcome! Started your learning journey.' },
+  { name: 'Explorer', pointsThreshold: 50, description: 'Ventured into new topics and practices.' },
+  { name: 'Scholar', pointsThreshold: 150, description: 'Consistently learning and building knowledge.' },
+  { name: 'Sage', pointsThreshold: 300, description: 'Mastered many concepts and guides.' },
 ];

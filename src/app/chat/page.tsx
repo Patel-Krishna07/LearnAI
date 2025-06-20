@@ -20,12 +20,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { POINTS_FOR_STUDY_GUIDE_ADD } from '@/lib/constants';
 
 const CHAT_MESSAGES_STORAGE_KEY = 'learnai-current-chatMessages';
 const INITIAL_GREETING_ID = 'initial-greeting';
 
 export default function ChatPage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, addPoints, user } = useAuth();
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +57,6 @@ export default function ChatPage() {
         } catch (e) {
           console.error("Failed to parse stored messages:", e);
           localStorage.removeItem(CHAT_MESSAGES_STORAGE_KEY); // Clear corrupted data
-          // Add initial greeting if localStorage was cleared or empty
           setMessages([
             {
               id: INITIAL_GREETING_ID,
@@ -67,7 +67,6 @@ export default function ChatPage() {
           ]);
         }
       } else {
-         // Add initial greeting if no messages stored
         setMessages([
           {
             id: INITIAL_GREETING_ID,
@@ -84,11 +83,8 @@ export default function ChatPage() {
   // Save messages to localStorage whenever they change
   useEffect(() => {
     if (isAuthenticated && messages.length > 0) {
-      // Avoid saving just the initial greeting if nothing else happened
       if (messages.length === 1 && messages[0].id === INITIAL_GREETING_ID) {
-        // If only initial greeting is present, don't persist unless modified or more messages added
-        // Or, to ensure it's always there on first load after clearing:
-        // localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(messages));
+        // Avoid saving if only initial greeting
       } else {
         localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(messages));
       }
@@ -197,7 +193,6 @@ export default function ChatPage() {
 
     try {
       setIsLoading(true); 
-      // messageToSave.content is the AI summary from the chat
       const result = await createStudyGuideEntryFlow({
         question: questionText,
         aiSummary: messageToSave.content, 
@@ -207,14 +202,15 @@ export default function ChatPage() {
       studyGuides.push({ 
         id: Date.now().toString(), 
         question: questionText, 
-        content: result.studyGuideEntry, // Use the processed entry from the AI flow
+        content: result.studyGuideEntry, 
         createdAt: new Date(),
       });
       localStorage.setItem('studyGuideEntries', JSON.stringify(studyGuides));
       
+      addPoints(POINTS_FOR_STUDY_GUIDE_ADD);
       toast({
         title: 'Added to Study Guide',
-        description: `"${questionText.substring(0,30)}..." saved.`,
+        description: `"${questionText.substring(0,30)}..." saved. +${POINTS_FOR_STUDY_GUIDE_ADD} points!`,
       });
     } catch (error) {
       console.error('Error creating study guide entry:', error);
@@ -238,7 +234,6 @@ export default function ChatPage() {
     };
     setMessages([initialGreetingMessage]);
     localStorage.removeItem(CHAT_MESSAGES_STORAGE_KEY);
-    // localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify([initialGreetingMessage])); // Optionally save initial greeting
     toast({ title: "Chat History Cleared", description: "Your current conversation has been cleared." });
   };
   
@@ -319,7 +314,7 @@ export default function ChatPage() {
         {isHistoryPanelOpen && (
           <div className="w-full md:w-80 lg:w-96 border-l bg-secondary transition-all duration-300 ease-in-out">
             <ChatHistoryPanel 
-              currentChatMessages={messages.filter(msg => msg.role === 'user')} // Pass only user messages for history list
+              currentChatMessages={messages.filter(msg => msg.role === 'user')} 
               onSelectHistoryItem={handleSelectHistoryItem}
               onClearHistory={handleClearHistory}
             />

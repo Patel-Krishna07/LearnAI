@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,11 +19,11 @@ import { PenSquare, Lightbulb, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { POINTS_FOR_PRACTICE_GENERATION } from '@/lib/constants';
 
 
 export default function PracticePage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, addPoints, user } = useAuth();
   const router = useRouter();
   const [exercises, setExercises] = useState<PracticeExerciseType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +45,7 @@ export default function PracticePage() {
 
   async function onSubmit(data: PracticeTopicFormData) {
     setIsLoading(true);
-    setExercises([]); // Clear previous exercises
+    setExercises([]); 
     try {
       const result = await generatePracticeExercises({
         topic: data.topic,
@@ -62,7 +62,8 @@ export default function PracticePage() {
         if(newExercises.length === 0) {
           toast({ title: 'No exercises generated', description: 'The AI could not generate exercises for this topic. Try a different one.', variant: 'default' });
         } else {
-           toast({ title: 'Exercises Generated!', description: `Here are ${newExercises.length} exercises on "${data.topic}".` });
+           addPoints(POINTS_FOR_PRACTICE_GENERATION);
+           toast({ title: 'Exercises Generated!', description: `Here are ${newExercises.length} exercises on "${data.topic}". +${POINTS_FOR_PRACTICE_GENERATION} points!` });
         }
       } else {
         throw new Error("AI response was not in the expected format.");
