@@ -17,6 +17,8 @@ import { createStudyGuideEntry as createStudyGuideEntryFlow } from '@/ai/flows/a
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
 
 
 export default function ChatPage() {
