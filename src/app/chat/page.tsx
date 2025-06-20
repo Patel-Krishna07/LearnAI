@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const CHAT_MESSAGES_STORAGE_KEY = 'learnai-current-chatMessages';
 const INITIAL_GREETING_ID = 'initial-greeting';
@@ -272,14 +273,21 @@ export default function ChatPage() {
               <Bot className="h-7 w-7 text-primary" />
               <h2 className="text-xl font-semibold font-headline">LearnAI Chat</h2>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
-              aria-label={isHistoryPanelOpen ? "Close history panel" : "Open history panel"}
-            >
-              {isHistoryPanelOpen ? <PanelRightClose className="h-5 w-5 text-accent" /> : <PanelRightOpen className="h-5 w-5 text-accent" />}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
+                  aria-label={isHistoryPanelOpen ? "Close history panel" : "Open history panel"}
+                >
+                  {isHistoryPanelOpen ? <PanelRightClose className="h-5 w-5 text-accent" /> : <PanelRightOpen className="h-5 w-5 text-accent" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isHistoryPanelOpen ? "Close History Panel" : "Open History Panel"}</p>
+              </TooltipContent>
+            </Tooltip>
           </header>
           
           <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>

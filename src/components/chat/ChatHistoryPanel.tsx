@@ -7,6 +7,7 @@ import { MessageSquareText, Trash2, History } from 'lucide-react'; // Changed Fi
 import { Card, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import type { ChatMessage as ChatMessageType } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ChatHistoryPanelProps {
   currentChatMessages: ChatMessageType[]; // Expecting user messages from the current chat
@@ -39,9 +40,16 @@ export function ChatHistoryPanel({ currentChatMessages, onSelectHistoryItem, onC
     <div className="h-full flex flex-col p-1">
       <div className="p-3 flex justify-between items-center border-b">
         <h3 className="text-lg font-semibold font-headline">Current Conversation</h3>
-        <Button variant="ghost" size="icon" onClick={onClearHistory} aria-label="Clear history" disabled={historyItems.length === 0}>
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onClearHistory} aria-label="Clear history" disabled={historyItems.length === 0}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Clear Current History</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-2">

@@ -8,6 +8,7 @@ import { Mic, Send, Paperclip, X, StopCircle, UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ChatInputProps {
   onSendMessage: (text: string, imageDataUri?: string, voiceDataUri?: string) => void;
@@ -222,23 +223,37 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
       {imagePreview && (
         <div className="mb-2 relative w-32 h-32 border rounded-md overflow-hidden">
           <Image src={imagePreview} alt="Preview" layout="fill" objectFit="cover" />
-          <Button
-            variant="destructive"
-            size="icon"
-            className="absolute top-1 right-1 h-6 w-6 z-10"
-            onClick={removeImage}
-            aria-label="Remove image"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute top-1 right-1 h-6 w-6 z-10"
+                onClick={removeImage}
+                aria-label="Remove image"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Remove image</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
        {recordedAudioBlob && !isRecording && (
         <div className="mb-2 p-2 border rounded-md flex items-center justify-between bg-secondary">
           <span className="text-sm text-secondary-foreground">Voice message ready</span>
-          <Button variant="ghost" size="icon" onClick={() => setRecordedAudioBlob(null)} aria-label="Remove voice message">
-            <X className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={() => setRecordedAudioBlob(null)} aria-label="Remove voice message">
+                <X className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Remove voice message</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
       <div className="flex items-end gap-2">
@@ -266,28 +281,49 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
           id="image-upload"
           disabled={isLoading || isRecording}
         />
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => imageInputRef.current?.click()} 
-          disabled={isLoading || isRecording} 
-          aria-label="Upload image"
-        >
-          <Paperclip className="h-5 w-5 text-accent" />
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={handleMicToggle} 
-          disabled={isLoading} 
-          aria-label={isRecording ? "Stop recording" : "Record voice message"}
-          className={isRecording ? "text-red-500" : "text-accent"}
-        >
-          {isRecording ? <StopCircle className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-        </Button>
-        <Button onClick={handleSend} disabled={!canSend} size="icon" aria-label="Send message">
-          <Send className="h-5 w-5" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => imageInputRef.current?.click()} 
+              disabled={isLoading || isRecording} 
+              aria-label="Upload image"
+            >
+              <Paperclip className="h-5 w-5 text-accent" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Attach image</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleMicToggle} 
+              disabled={isLoading} 
+              aria-label={isRecording ? "Stop recording" : "Record voice message"}
+              className={isRecording ? "text-red-500" : "text-accent"}
+            >
+              {isRecording ? <StopCircle className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{isRecording ? "Stop recording" : "Record voice message"}</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button onClick={handleSend} disabled={!canSend} size="icon" aria-label="Send message">
+              <Send className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Send message</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
       {isRecording && (
         <p className="text-xs text-red-500 mt-1 text-center">Recording audio...</p>

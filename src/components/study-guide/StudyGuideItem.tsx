@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { StudyGuideEntry } from '@/lib/types';
@@ -5,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit3, CheckSquare, FileText } from 'lucide-react';
 import { format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface StudyGuideItemProps {
   entry: StudyGuideEntry;
@@ -35,12 +37,26 @@ export function StudyGuideItem({ entry, onDelete }: StudyGuideItemProps) {
         </div>
       </CardContent>
       <CardFooter className="flex justify-end gap-2">
-        {/* <Button variant="outline" size="sm" onClick={() => onEdit(entry)} aria-label="Edit entry">
-          <Edit3 className="mr-2 h-4 w-4" /> Edit
-        </Button> */}
-        <Button variant="destructive" size="sm" onClick={() => onDelete(entry.id)} aria-label="Delete entry">
-          <Trash2 className="mr-2 h-4 w-4" /> Delete
-        </Button>
+        {/* <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={() => onEdit(entry)} aria-label="Edit entry">
+              <Edit3 className="mr-2 h-4 w-4" /> Edit
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Edit this entry</p>
+          </TooltipContent>
+        </Tooltip> */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="destructive" size="sm" onClick={() => onDelete(entry.id)} aria-label="Delete entry">
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Delete this entry</p>
+          </TooltipContent>
+        </Tooltip>
       </CardFooter>
     </Card>
   );

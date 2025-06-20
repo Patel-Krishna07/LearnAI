@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { User, Bot, Flag, PlusCircle, Volume2 } from 'lucide-react';
 import Image from 'next/image'; // Still needed for user-uploaded message.image
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -57,12 +58,26 @@ export function ChatMessage({ message, onFlagResponse, onAddToStudyGuide }: Chat
         </CardContent>
         {!isUser && (
           <CardFooter className="p-2 border-t flex justify-end gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onFlagResponse(message.id)} aria-label="Flag response">
-              <Flag className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAddToStudyGuide(message)} aria-label="Add to study guide">
-              <PlusCircle className="h-4 w-4 text-muted-foreground hover:text-accent" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onFlagResponse(message.id)} aria-label="Flag response">
+                  <Flag className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Flag this response</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAddToStudyGuide(message)} aria-label="Add to study guide">
+                  <PlusCircle className="h-4 w-4 text-muted-foreground hover:text-accent" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Add to Study Guide</p>
+              </TooltipContent>
+            </Tooltip>
           </CardFooter>
         )}
       </Card>

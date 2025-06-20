@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -5,6 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff, HelpCircle } from 'lucide-react';
 import type { PracticeExercise } from '@/lib/types';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ExerciseCardProps {
   exercise: PracticeExercise;
@@ -32,10 +34,17 @@ export function ExerciseCard({ exercise, index }: ExerciseCardProps) {
         )}
       </CardContent>
       <CardFooter>
-        <Button variant="outline" onClick={() => setShowAnswer(!showAnswer)} className="w-full">
-          {showAnswer ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-          {showAnswer ? 'Hide Answer' : 'Show Answer'}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" onClick={() => setShowAnswer(!showAnswer)} className="w-full">
+              {showAnswer ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+              {showAnswer ? 'Hide Answer' : 'Show Answer'}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{showAnswer ? 'Hide the answer' : 'Reveal the answer'}</p>
+          </TooltipContent>
+        </Tooltip>
       </CardFooter>
     </Card>
   );

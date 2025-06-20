@@ -9,6 +9,7 @@ import { Menu, LogOut, UserCircle, NotebookText, Feather } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function Header() {
   const { isAuthenticated, user, logout, loading } = useAuth();
@@ -57,9 +58,16 @@ export function Header() {
           {isAuthenticated ? (
             <>
               <span className="hidden sm:inline text-sm text-muted-foreground">Welcome, {user?.name || 'User'}</span>
-              <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
-                <LogOut className="h-5 w-5 text-accent" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
+                    <LogOut className="h-5 w-5 text-accent" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Logout</p>
+                </TooltipContent>
+              </Tooltip>
             </>
           ) : (
             <nav className="hidden md:flex items-center space-x-2">
@@ -71,11 +79,18 @@ export function Header() {
             </nav>
           )}
           <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
-                <Menu className="h-5 w-5 text-accent" />
-              </Button>
-            </SheetTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
+                    <Menu className="h-5 w-5 text-accent" />
+                  </Button>
+                </SheetTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Open Menu</p>
+              </TooltipContent>
+            </Tooltip>
             <SheetContent side="right">
               <Link href="/" className="mb-6 flex items-center space-x-2">
                  <Feather className="h-6 w-6 text-accent" />
