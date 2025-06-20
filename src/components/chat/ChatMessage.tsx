@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChatMessage as ChatMessageType } from '@/lib/types';
@@ -5,8 +6,8 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { User, Bot, Flag, PlusCircle, Image as ImageIcon, Volume2 } from 'lucide-react';
-import Image from 'next/image';
+import { User, Bot, Flag, PlusCircle, Volume2 } from 'lucide-react';
+import Image from 'next/image'; // Still needed for user-uploaded message.image
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -37,15 +38,20 @@ export function ChatMessage({ message, onFlagResponse, onAddToStudyGuide }: Chat
               {/* In a real app, you would play the audio here */}
             </div>
           )}
-          {message.image && (
+          {message.image && ( // User uploaded image
             <div className="mb-2 rounded-md overflow-hidden border" data-ai-hint="abstract query">
               <Image src={message.image} alt="User query image" width={200} height={150} className="object-cover" />
             </div>
           )}
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-          {message.visualAid && (
+          {message.visualAid && ( // AI generated image/visual
             <div className="mt-3 p-2 border rounded-md bg-background" data-ai-hint="chart diagram">
-              <Image src={message.visualAid} alt="AI visual aid" width={300} height={200} className="object-contain rounded-md" />
+              {/* Use standard img tag for visualAid (AI generated images) */}
+              <img 
+                src={message.visualAid} 
+                alt="AI visual aid" 
+                className="object-contain rounded-md w-full max-w-[300px] h-auto max-h-[200px] mx-auto" 
+              />
             </div>
           )}
         </CardContent>
