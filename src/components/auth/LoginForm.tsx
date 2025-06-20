@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +11,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import type { User } from '@/lib/types';
+
+// Define a type for stored users that includes the password
+interface StoredUser extends User {
+  password?: string;
+}
 
 export function LoginForm() {
   const { login } = useAuth();
@@ -30,18 +37,45 @@ export function LoginForm() {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Placeholder login logic
-    if (data.email === 'student@example.com' && data.password === 'password') {
-      login({ id: '1', email: data.email, name: 'Demo Student' });
-      toast({ title: 'Login Successful', description: 'Welcome back!' });
-      router.push('/chat');
-    } else {
-      toast({
-        title: 'Login Failed',
-        description: 'Invalid email or password.',
-        variant: 'destructive',
-      });
+    // Check credentials against localStorage
+    // IMPORTANT: This is NOT secure for production.
+    try {
+      const storedUsersJSON = localStorage.getItem('learnai-registered-users');
+      const storedUsers: StoredUser[] = storedUsersJSON ? JSON.parse(storedUsersJSON) : [];
+      
+      const foundUser = storedUsers.find(user => user.email === data.email);
+
+      if (foundUser && foundUser.password === data.password) {
+        // Password matches. Prepare user data for AuthContext (without password)
+        const userToLogin: User = {
+          id: foundUser.id,
+          email: foundUser.email,
+          name: foundUser.name,
+          image: foundUser.image, // if you store image during registration
+        };
+        login(userToLogin);
+        toast({ title: 'Login Successful', description: 'Welcome back!' });
+        
+        const queryParams = new URLSearchParams(window.location.search);
+        const redirectUrl = queryParams.get('redirect') || '/chat';
+        router.push(redirectUrl);
+
+      } else {
+        toast({
+          title: 'Login Failed',
+          description: 'Invalid email or password.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+        console.error("Error during login:", error);
+        toast({
+          title: 'Login Error',
+          description: 'An unexpected error occurred during login.',
+          variant: 'destructive',
+        });
     }
+    
     setIsLoading(false);
   }
 
