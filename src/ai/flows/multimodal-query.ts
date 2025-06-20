@@ -12,6 +12,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { generateImageFromTextTool } from '@/ai/flows/generate-image-tool';
 
 const MultimodalQueryInputSchema = z.object({
   textQuery: z.string().optional().describe('The text-based query from the student.'),
@@ -35,7 +36,7 @@ const MultimodalQueryOutputSchema = z.object({
   visualAid: z
     .string()
     .optional()
-    .describe('A data URI containing a visual aid, such as a chart or diagram. This should only be populated if explicitly requested by the user.'),
+    .describe('A data URI containing a visual aid, such as a chart, diagram, or a generated image. This should only be populated if explicitly requested by the user for a visual or if an image was generated.'),
 });
 export type MultimodalQueryOutput = z.infer<typeof MultimodalQueryOutputSchema>;
 
@@ -47,29 +48,35 @@ const multimodalQueryPrompt = ai.definePrompt({
   name: 'multimodalQueryPrompt',
   input: {schema: MultimodalQueryInputSchema},
   output: {schema: MultimodalQueryOutputSchema},
+  tools: [generateImageFromTextTool],
   prompt: `You are an AI assistant designed to help students with their queries.
-
 You can receive queries in text, voice, or image format.
 
-Based on the input, provide a relevant and informative response. **Only generate a visual aid (e.g., a chart or diagram) and populate the visualAid output field if the student explicitly asks for "visual aid", "chart", "diagram", "graph", or "picture" in their text query.** Otherwise, leave the visualAid field empty or undefined.
+**Image Generation Task:**
+If the user's query is a request to generate a new image (e.g., "draw a cat", "generate an image of a sunset", "create a picture of a futuristic city"), you MUST use the 'generateImageFromTextTool'.
+- The tool will return an 'imageDataUri' or an 'error'. If an 'imageDataUri' is returned, place this 'imageDataUri' into the 'visualAid' field of your output.
+- Your 'response' field should be a short confirmation, like "Certainly, here is the image of [subject]:" or "I've generated the image you asked for." If the tool returns an error, your 'response' field should convey that error message.
+
+**Other Queries (Q&A, Explanations, etc.):**
+For all other types of queries (questions, requests for explanations, analysis of provided images/voice):
+- Provide a relevant and informative text response in the 'response' field.
+- Only generate a supporting visual aid (e.g., a chart or diagram, NOT a newly generated artistic image unless it's part of answering the query) and populate the 'visualAid' output field if the student explicitly asks for "visual aid", "chart", "diagram", "graph", or "picture" in their text query in the context of an explanation. Do NOT use the generateImageFromTextTool for these supporting visuals unless the request is specifically to create a new artistic image.
 
 If the user submits a picture, try to understand what the user wants to know about that picture, and formulate your response accordingly.
 
 Here's the student's query:
-
 {{#if textQuery}}
 Text: {{{textQuery}}}
 {{/if}}
-
 {{#if voiceDataUri}}
 Voice: {{media url=voiceDataUri}}
 {{/if}}
-
 {{#if imageDataUri}}
 Image: {{media url=imageDataUri}}
 {{/if}}
 
-Response format: Respond in a way that is helpful to students.`,
+Response format: Respond in a way that is helpful to students. Ensure your output strictly follows the MultimodalQueryOutputSchema. If an image is generated successfully, include it in visualAid. If image generation fails, provide the error in the response text and leave visualAid empty.
+`,
 });
 
 const multimodalQueryFlow = ai.defineFlow(
