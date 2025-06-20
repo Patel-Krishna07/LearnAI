@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,15 +10,13 @@ import { RegisterSchema, type RegisterFormData } from '@/lib/schemas';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-
+// Removed useAuth import as login is no longer called here
 
 export function RegisterForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
-
+  // Removed useAuth hook call
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(RegisterSchema),
@@ -36,15 +35,15 @@ export function RegisterForm() {
     
     // Placeholder registration logic
     console.log('Registration data:', data);
-    // In a real app, you would call your backend API here.
-    // For now, let's simulate a successful registration and login.
-    login({ id: String(Date.now()), email: data.email, name: data.name });
+    // In a real app, you would call your backend API here to create the user.
+    // For this example, we assume success and redirect to login.
+    // The login call is removed: login({ id: String(Date.now()), email: data.email, name: data.name });
 
     toast({
       title: 'Registration Successful',
-      description: "You're now part of the community!",
+      description: "You can now log in with your credentials.",
     });
-    router.push('/chat');
+    router.push('/login'); // Redirect to login page
     setIsLoading(false);
   }
 
