@@ -197,18 +197,18 @@ export default function ChatPage() {
 
     try {
       setIsLoading(true); 
+      // messageToSave.content is the AI summary from the chat
       const result = await createStudyGuideEntryFlow({
         question: questionText,
-        aiSummary: messageToSave.content,
+        aiSummary: messageToSave.content, 
       });
       
       const studyGuides = JSON.parse(localStorage.getItem('studyGuideEntries') || '[]');
       studyGuides.push({ 
         id: Date.now().toString(), 
         question: questionText, 
-        aiSummary: messageToSave.content, 
+        content: result.studyGuideEntry, // Use the processed entry from the AI flow
         createdAt: new Date(),
-        fullEntry: result.studyGuideEntry 
       });
       localStorage.setItem('studyGuideEntries', JSON.stringify(studyGuides));
       

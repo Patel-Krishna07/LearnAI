@@ -31,9 +31,9 @@ export function StudyGuideItem({ entry, onDelete }: StudyGuideItemProps) {
       <CardContent>
         <div className="p-3 bg-secondary rounded-md border border-dashed">
           <h4 className="font-semibold mb-1 text-primary flex items-center gap-1">
-            <CheckSquare className="h-4 w-4" /> AI Summary:
+            <CheckSquare className="h-4 w-4" /> Study Entry Details:
           </h4>
-          <p className="text-sm text-foreground/80 whitespace-pre-wrap">{entry.aiSummary}</p>
+          <p className="text-sm text-foreground/80 whitespace-pre-wrap">{entry.content}</p>
         </div>
       </CardContent>
       <CardFooter className="flex justify-end gap-2">

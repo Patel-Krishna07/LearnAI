@@ -18,8 +18,8 @@ export interface ChatMessage {
 
 export interface StudyGuideEntry {
   id: string;
-  question: string;
-  aiSummary: string;
+  question: string; // User's original question text
+  content: string;   // The AI-generated study guide entry (combined)
   createdAt: Date;
 }
 
@@ -28,3 +28,4 @@ export interface PracticeExercise {
   question: string;
   answer: string;
 }
+
