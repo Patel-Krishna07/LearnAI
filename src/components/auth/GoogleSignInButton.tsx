@@ -1,13 +1,11 @@
+
 "use client";
 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { auth, googleProvider } from '@/lib/firebase/config';
-import { signInWithPopup, User as FirebaseUser } from 'firebase/auth';
-import { useAuth } from '@/contexts/AuthContext';
+import { signInWithPopup } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import type { User, LeaderboardUser } from '@/lib/types';
-import { BADGE_DEFINITIONS } from '@/lib/constants';
 
 // Replace with actual Google logo SVG or an icon from lucide-react if available
 const GoogleIcon = () => (
@@ -20,19 +18,8 @@ const GoogleIcon = () => (
   </svg>
 );
 
-const LEARN_AI_REGISTERED_USERS_KEY = 'learnai-registered-users';
-const LEARN_AI_LEADERBOARD_KEY = 'learnai-leaderboard-users';
-
-const getInitialBadges = (points: number): string[] => {
-  return BADGE_DEFINITIONS
-    .filter(badge => points >= badge.pointsThreshold)
-    .map(badge => badge.name);
-};
-
-
 export function GoogleSignInButton() {
   const { toast } = useToast();
-  const { login } = useAuth();
   const router = useRouter();
 
   // The button should be disabled if Firebase is not configured.
@@ -49,67 +36,31 @@ export function GoogleSignInButton() {
     }
     
     try {
-      // Non-null assertion `!` is safe here because of the isFirebaseDisabled check
-      const result = await signInWithPopup(auth!, googleProvider!);
-      const firebaseUser = result.user;
-
-      // Check if user exists in our local storage "database"
-      const storedUsersJSON = localStorage.getItem(LEARN_AI_REGISTERED_USERS_KEY);
-      const storedUsers: User[] = storedUsersJSON ? JSON.parse(storedUsersJSON) : [];
+      // The onAuthStateChanged listener in AuthContext will handle user creation and session management.
+      // This button's only responsibility is to trigger the sign-in process.
+      await signInWithPopup(auth!, googleProvider!);
       
-      let appUser = storedUsers.find(u => u.email === firebaseUser.email);
+      toast({ title: "Login Successful", description: "Welcome! Redirecting you now..." });
 
-      if (!appUser) {
-        // This is a new user, so we "register" them in our local system.
-        const initialPoints = 0;
-        const initialBadges = getInitialBadges(initialPoints);
-
-        const newUser: User = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email,
-          name: firebaseUser.displayName,
-          image: firebaseUser.photoURL,
-          points: initialPoints,
-          badges: initialBadges,
-        };
-        
-        // Add to "registered users" list
-        storedUsers.push(newUser);
-        localStorage.setItem(LEARN_AI_REGISTERED_USERS_KEY, JSON.stringify(storedUsers));
-        
-        // Add to "leaderboard" list
-        const existingLeaderboardUsersJSON = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
-        const existingLeaderboardUsers: LeaderboardUser[] = existingLeaderboardUsersJSON ? JSON.parse(existingLeaderboardUsersJSON) : [];
-        const newUserForLeaderboard: LeaderboardUser = {
-          id: newUser.id,
-          name: newUser.name || "Anonymous",
-          points: initialPoints,
-          badges: initialBadges,
-        };
-        existingLeaderboardUsers.push(newUserForLeaderboard);
-        localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(existingLeaderboardUsers));
-        
-        appUser = newUser;
-        toast({ title: "Account Created", description: "Welcome to LearnAI!" });
-      } else {
-        toast({ title: "Login Successful", description: "Welcome back!" });
-      }
-      
-      // Log the user into the app's context
-      login(appUser);
-
-      // Redirect
+      // Redirect after successful sign-in. The AuthContext will have updated the user state.
       const queryParams = new URLSearchParams(window.location.search);
       const redirectUrl = queryParams.get('redirect') || '/chat';
       router.push(redirectUrl);
 
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
-      toast({
-        title: "Google Sign-In Failed",
-        description: error.message || "An unexpected error occurred.",
-        variant: "destructive",
-      });
+      if (error.code === 'auth/popup-closed-by-user') {
+        toast({
+          title: "Sign-In Cancelled",
+          description: "You closed the sign-in window before completing the process.",
+        });
+      } else {
+        toast({
+          title: "Google Sign-In Failed",
+          description: error.message || "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
