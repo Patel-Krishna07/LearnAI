@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { auth, googleProvider } from '@/lib/firebase/config';
 import { signInWithPopup } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Replace with actual Google logo SVG or an icon from lucide-react if available
 const GoogleIcon = () => (
@@ -64,10 +65,29 @@ export function GoogleSignInButton() {
     }
   };
 
-  return (
-    <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isFirebaseDisabled}>
+  const buttonComponent = (
+     <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isFirebaseDisabled}>
       <GoogleIcon />
       <span className="ml-2">Sign in with Google</span>
     </Button>
   );
+
+  if (isFirebaseDisabled) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* A div/span wrapper is needed to show a tooltip on a disabled button */}
+          <div className="w-full cursor-not-allowed" tabIndex={0}>
+            {buttonComponent}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Google Sign-In is not configured.</p>
+          <p className="text-xs text-muted-foreground">Please provide Firebase keys in the .env file.</p>
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return buttonComponent;
 }
