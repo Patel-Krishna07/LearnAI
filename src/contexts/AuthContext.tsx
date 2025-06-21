@@ -36,6 +36,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // If Firebase is not configured, auth will be null. Fallback to local-only check.
+    if (!auth) {
+      const storedUserJson = localStorage.getItem(LEARN_AI_USER_KEY);
+      if (storedUserJson) {
+          try {
+              const storedUser = JSON.parse(storedUserJson) as User;
+                if (typeof storedUser.points !== 'number') storedUser.points = 0;
+                if (!Array.isArray(storedUser.badges)) storedUser.badges = getEarnedBadges(storedUser.points);
+              setUser(storedUser);
+          } catch (e) {
+              console.error("Failed to parse stored user:", e);
+              localStorage.removeItem(LEARN_AI_USER_KEY);
+              setUser(null);
+          }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         // User is signed in via Firebase
@@ -107,7 +128,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    signOut(auth).catch(error => console.error("Error signing out from Firebase:", error));
+    if (auth) {
+      signOut(auth).catch(error => console.error("Error signing out from Firebase:", error));
+    }
     setUser(null);
     localStorage.removeItem(LEARN_AI_USER_KEY);
   };

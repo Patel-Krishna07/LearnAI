@@ -35,9 +35,22 @@ export function GoogleSignInButton() {
   const { login } = useAuth();
   const router = useRouter();
 
+  // The button should be disabled if Firebase is not configured.
+  const isFirebaseDisabled = !auth || !googleProvider;
+
   const handleGoogleSignIn = async () => {
+    if (isFirebaseDisabled) {
+      toast({
+        title: "Google Sign-In Unavailable",
+        description: "This feature is not configured. Please ensure Firebase keys are set in the .env file.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      // Non-null assertion `!` is safe here because of the isFirebaseDisabled check
+      const result = await signInWithPopup(auth!, googleProvider!);
       const firebaseUser = result.user;
 
       // Check if user exists in our local storage "database"
@@ -101,7 +114,7 @@ export function GoogleSignInButton() {
   };
 
   return (
-    <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+    <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isFirebaseDisabled}>
       <GoogleIcon />
       <span className="ml-2">Sign in with Google</span>
     </Button>
