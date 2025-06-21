@@ -4,6 +4,9 @@
 import type { User, LeaderboardUser } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { auth } from '@/lib/firebase/config';
+import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
+
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +21,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LEARN_AI_USER_KEY = 'learnai-user';
 const LEARN_AI_LEADERBOARD_KEY = 'learnai-leaderboard-users';
+const LEARN_AI_REGISTERED_USERS_KEY = 'learnai-registered-users';
+
 
 // Helper function to determine badges based on points
 const getEarnedBadges = (points: number): string[] => {
@@ -31,24 +36,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUserJson = localStorage.getItem(LEARN_AI_USER_KEY);
-    if (storedUserJson) {
-      try {
-        const storedUser = JSON.parse(storedUserJson) as User;
-        // Ensure points and badges are initialized
-        if (typeof storedUser.points !== 'number') {
-          storedUser.points = 0;
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in via Firebase
+        const storedUsersJSON = localStorage.getItem(LEARN_AI_REGISTERED_USERS_KEY);
+        const storedUsers: User[] = storedUsersJSON ? JSON.parse(storedUsersJSON) : [];
+        let appUser = storedUsers.find(u => u.email === firebaseUser.email);
+        
+        if (appUser) {
+          // Found user in our local storage, log them into the app context
+          login(appUser);
+        } else {
+           // This case can happen if user signed up with Google but local storage was cleared
+           // We'll create a local record for them.
+           const initialPoints = 0;
+           const initialBadges = getInitialBadges(initialPoints);
+           const newUser: User = {
+             id: firebaseUser.uid,
+             email: firebaseUser.email,
+             name: firebaseUser.displayName,
+             image: firebaseUser.photoURL,
+             points: initialPoints,
+             badges: initialBadges,
+           };
+           storedUsers.push(newUser);
+           localStorage.setItem(LEARN_AI_REGISTERED_USERS_KEY, JSON.stringify(storedUsers));
+           // Also add to leaderboard
+           const leaderboardJSON = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
+           const leaderboard: LeaderboardUser[] = leaderboardJSON ? JSON.parse(leaderboardJSON) : [];
+           if (!leaderboard.find(lu => lu.id === newUser.id)) {
+              leaderboard.push({ id: newUser.id, name: newUser.name || "User", points: 0, badges: [] });
+              localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(leaderboard));
+           }
+           login(newUser);
         }
-        if (!Array.isArray(storedUser.badges)) {
-          storedUser.badges = getEarnedBadges(storedUser.points);
+      } else {
+        // User is signed out from Firebase's perspective, or was never signed in.
+        // Check for our own localStorage-based user.
+        const storedUserJson = localStorage.getItem(LEARN_AI_USER_KEY);
+        if (storedUserJson) {
+            try {
+                const storedUser = JSON.parse(storedUserJson) as User;
+                 if (typeof storedUser.points !== 'number') storedUser.points = 0;
+                 if (!Array.isArray(storedUser.badges)) storedUser.badges = getEarnedBadges(storedUser.points);
+                setUser(storedUser);
+            } catch (e) {
+                console.error("Failed to parse stored user:", e);
+                localStorage.removeItem(LEARN_AI_USER_KEY);
+                setUser(null);
+            }
+        } else {
+          setUser(null);
         }
-        setUser(storedUser);
-      } catch (e) {
-        console.error("Failed to parse stored user:", e);
-        localStorage.removeItem(LEARN_AI_USER_KEY);
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   const login = (userData: User) => {
@@ -62,6 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    signOut(auth).catch(error => console.error("Error signing out from Firebase:", error));
     setUser(null);
     localStorage.removeItem(LEARN_AI_USER_KEY);
   };
