@@ -206,7 +206,7 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
   return (
     <div 
       className={cn(
-        "p-4 border-t bg-background shadow- ऊपर relative",
+        "p-4 border-t bg-background shadow-md relative",
         isDraggingOver && "border-primary ring-2 ring-primary"
       )}
       onDragOver={handleDragOver}
