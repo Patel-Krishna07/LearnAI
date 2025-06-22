@@ -27,7 +27,7 @@ export const generateImageFromTextTool = ai.defineTool(
   async (input) => {
     try {
       const {media, text} = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp', // Specific model for image generation
+        model: 'googleai/gemini-2.0-flash-preview-image-generation', // Specific model for image generation
         prompt: input.prompt,
         config: {
           responseModalities: ['TEXT', 'IMAGE'], // Must provide both
