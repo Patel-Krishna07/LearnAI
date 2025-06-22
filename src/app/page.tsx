@@ -8,6 +8,7 @@ import { MessageSquareText, PenSquare, BookMarked, Feather, Sparkles } from 'luc
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
+import { APP_NAME } from '@/lib/constants';
 
 export default function HomePage() {
   const { isAuthenticated, loading } = useAuth();
@@ -42,7 +43,7 @@ export default function HomePage() {
           <div className="container mx-auto px-6 text-center">
             <Feather className="h-20 w-20 text-accent mx-auto mb-6" />
             <h1 className="text-5xl md:text-7xl font-bold font-headline mb-6">
-              Welcome to <span className="text-primary">{require('@/lib/constants').APP_NAME}</span>
+              Welcome to <span className="text-primary">{APP_NAME}</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto">
               Your AI-Powered Interactive Learning Assistant. Ask, learn, and grow with intelligent support tailored for you.
@@ -100,7 +101,7 @@ export default function HomePage() {
         </section>
       </main>
       <footer className="py-8 text-center text-sm text-muted-foreground border-t">
-        © {new Date().getFullYear()} {require('@/lib/constants').APP_NAME}. All rights reserved.
+        © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
       </footer>
     </div>
   );
