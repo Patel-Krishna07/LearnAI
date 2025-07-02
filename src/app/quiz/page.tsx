@@ -66,7 +66,7 @@ const McqComponent = ({ question, onCorrect }: { question: GenerateMcqOutput, on
           return (
             <Button
               key={index} variant="outline" onClick={() => handleSelect(index)} disabled={hasBeenAnswered}
-              className={cn("justify-start text-left h-auto py-2", hasBeenAnswered && isCorrect && "border-green-500 bg-green-500/10", hasBeenAnswered && !isCorrect && isSelected && "border-red-500 bg-red-500/10", "disabled:opacity-100 disabled:cursor-not-allowed")}
+              className={cn("justify-start text-left h-auto whitespace-normal py-2", hasBeenAnswered && isCorrect && "border-green-500 bg-green-500/10", hasBeenAnswered && !isCorrect && isSelected && "border-red-500 bg-red-500/10", "disabled:opacity-100 disabled:cursor-not-allowed")}
             >
               {option}
               {hasBeenAnswered && isCorrect && <CheckCircle2 className="ml-auto h-5 w-5 text-green-500" />}
@@ -190,7 +190,7 @@ const MatchingPairsComponent = ({ pairs, onCorrect }: { pairs: GenerateMatchingP
                         <Button
                             key={`term-${i}`} variant="outline" onClick={() => handleTermClick(p.term, i)}
                             disabled={matchedPairs.includes(i)}
-                            className={cn("w-full h-auto text-left justify-start p-2", selectedTerm?.id === i && "ring-2 ring-primary", matchedPairs.includes(i) && "bg-green-100 border-green-300 text-muted-foreground")}
+                            className={cn("w-full h-auto text-left justify-start p-2 whitespace-normal", selectedTerm?.id === i && "ring-2 ring-primary", matchedPairs.includes(i) && "bg-green-100 border-green-300 text-muted-foreground")}
                         >
                             {p.term}
                         </Button>
@@ -205,7 +205,7 @@ const MatchingPairsComponent = ({ pairs, onCorrect }: { pairs: GenerateMatchingP
                             <Button
                                 key={`def-${i}`} variant="outline" onClick={() => handleDefClick(d.text, i)}
                                 disabled={isMatched}
-                                className={cn("w-full h-auto text-left justify-start p-2", isMatched && "bg-green-100 border-green-300 text-muted-foreground")}
+                                className={cn("w-full h-auto text-left justify-start p-2 whitespace-normal", isMatched && "bg-green-100 border-green-300 text-muted-foreground")}
                             >
                                 {d.text}
                             </Button>
