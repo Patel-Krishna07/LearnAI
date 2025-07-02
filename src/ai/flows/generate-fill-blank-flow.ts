@@ -1,28 +1,34 @@
 'use server';
 
 /**
- * @fileOverview A Genkit flow for generating a fill-in-the-blank question.
+ * @fileOverview A Genkit flow for generating fill-in-the-blank questions.
  *
- * - generateFillBlank - A function that generates a fill-in-the-blank question on a given topic.
- * - GenerateFillBlankInput - The input type for the generateFillBlank function.
- * - GenerateFillBlankOutput - The return type for the generateFillBlank function.
+ * - generateFillBlanks - A function that generates multiple fill-in-the-blank questions on a given topic.
+ * - GenerateFillBlankInput - The input type for the generateFillBlanks function.
+ * - GenerateFillBlankOutput - The return type for the generateFillBlanks function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
 const GenerateFillBlankInputSchema = z.object({
-  topic: z.string().describe('The topic for which to generate the question.'),
+  topic: z.string().describe('The topic for which to generate the questions.'),
+  numQuestions: z.number().describe('The number of questions to generate.'),
 });
 export type GenerateFillBlankInput = z.infer<typeof GenerateFillBlankInputSchema>;
 
-const GenerateFillBlankOutputSchema = z.object({
+const FillBlankQuestionSchema = z.object({
   question: z.string().describe('A sentence with "[BLANK]" as a placeholder for the answer.'),
   answer: z.string().describe('The word or short phrase that fills the blank.'),
 });
+export type FillBlankQuestion = z.infer<typeof FillBlankQuestionSchema>;
+
+const GenerateFillBlankOutputSchema = z.object({
+  questions: z.array(FillBlankQuestionSchema).describe('An array of generated fill-in-the-blank questions.'),
+});
 export type GenerateFillBlankOutput = z.infer<typeof GenerateFillBlankOutputSchema>;
 
-export async function generateFillBlank(input: GenerateFillBlankInput): Promise<GenerateFillBlankOutput> {
+export async function generateFillBlanks(input: GenerateFillBlankInput): Promise<GenerateFillBlankOutput> {
   return generateFillBlankFlow(input);
 }
 
@@ -31,11 +37,11 @@ const generateFillBlankPrompt = ai.definePrompt({
   input: { schema: GenerateFillBlankInputSchema },
   output: { schema: GenerateFillBlankOutputSchema },
   model: 'googleai/gemini-1.5-flash',
-  prompt: `You are an expert educator. Your task is to generate a single fill-in-the-blank question for the given topic: {{{topic}}}.
+  prompt: `You are an expert educator. Your task is to generate {{numQuestions}} distinct fill-in-the-blank questions for the given topic: {{{topic}}}.
 
-  Create a sentence that has a clear, single-word or short-phrase answer.
+  For each question, create a sentence that has a clear, single-word or short-phrase answer.
   Use the exact placeholder "[BLANK]" to represent where the user should fill in their answer.
-  Return the result in the specified JSON format.`,
+  Return the result as a JSON object containing an array of question objects.`,
 });
 
 const generateFillBlankFlow = ai.defineFlow(
@@ -46,8 +52,8 @@ const generateFillBlankFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await generateFillBlankPrompt(input);
-    if (!output) {
-      throw new Error('Failed to generate question. The AI model did not return a valid output.');
+    if (!output || !output.questions || output.questions.length === 0) {
+      throw new Error('Failed to generate questions. The AI model did not return a valid output.');
     }
     return output;
   }

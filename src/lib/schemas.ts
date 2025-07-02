@@ -32,3 +32,15 @@ export const PracticeTopicSchema = z.object({
   numQuestions: z.coerce.number().min(1).max(10).default(5),
 });
 export type PracticeTopicFormData = z.infer<typeof PracticeTopicSchema>;
+
+export const QuizTopicSchema = z.object({
+  topic: z.string().min(3, { message: 'Topic must be at least 3 characters.' }),
+  numQuestions: z.coerce.number().min(3, "Must generate at least 3 questions.").max(10, "Cannot generate more than 10 questions.").default(3),
+});
+export type QuizTopicFormData = z.infer<typeof QuizTopicSchema>;
+
+export const MatchingTopicSchema = z.object({
+  topic: z.string().min(3, { message: 'Topic must be at least 3 characters long.' }),
+  numPairs: z.coerce.number().min(3, 'Must have at least 3 pairs.').max(6, 'Cannot have more than 6 pairs.').default(4),
+});
+export type MatchingTopicFormData = z.infer<typeof MatchingTopicSchema>;
