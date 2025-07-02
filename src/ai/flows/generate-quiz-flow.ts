@@ -13,20 +13,20 @@ import { z } from 'zod';
 
 // Schemas for different question types
 const McqQuestionSchema = z.object({
-  type: z.enum(['MCQ']),
+  type: z.string().describe("The type of question. Must be 'MCQ' for this type."),
   question: z.string().describe('The multiple-choice question.'),
   options: z.array(z.string()).length(4).describe('An array of 4 possible answers.'),
   correctAnswerIndex: z.number().min(0).max(3).describe('The index (0-3) of the correct answer in the options array.'),
 });
 
 const TrueFalseQuestionSchema = z.object({
-    type: z.enum(['TRUE_FALSE']),
+    type: z.string().describe("The type of question. Must be 'TRUE_FALSE' for this type."),
     statement: z.string().describe('The true or false statement.'),
     isTrue: z.boolean().describe('Whether the statement is true or false.'),
 });
 
 const FillBlankQuestionSchema = z.object({
-    type: z.enum(['FILL_BLANK']),
+    type: z.string().describe("The type of question. Must be 'FILL_BLANK' for this type."),
     question: z.string().describe('A sentence with "[BLANK]" as a placeholder for the answer.'),
     answer: z.string().describe('The word or short phrase that fills the blank.'),
 });
@@ -67,13 +67,13 @@ const generateQuizPrompt = ai.definePrompt({
   prompt: `You are an expert educator. Your task is to generate a quiz with {{numQuestions}} questions on the given topic: {{{topic}}}.
 
   The quiz should contain a mix of different question types: Multiple Choice (MCQ), True/False, and Fill-in-the-Blank.
-  For each question, set the 'type' field appropriately ('MCQ', 'TRUE_FALSE', or 'FILL_BLANK').
+  For each question, set the 'type' field appropriately to one of the following exact strings: 'MCQ', 'TRUE_FALSE', or 'FILL_BLANK'.
 
   For MCQ questions, provide a question, 4 options, and the index of the correct answer.
   For True/False questions, provide a statement and whether it is true.
   For Fill-in-the-Blank questions, provide a sentence with "[BLANK]" as a placeholder and the correct answer.
 
-  Return the result as a JSON object containing an array of question objects.`,
+  Return the result as a JSON object containing an array of question objects that strictly follows the schema.`,
 });
 
 const generateQuizFlow = ai.defineFlow(
