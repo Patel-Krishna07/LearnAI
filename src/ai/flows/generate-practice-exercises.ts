@@ -41,7 +41,7 @@ const generatePracticeExercisesPrompt = ai.definePrompt({
   name: 'generatePracticeExercisesPrompt',
   input: {schema: GeneratePracticeExercisesInputSchema},
   output: {schema: GeneratePracticeExercisesOutputSchema},
-  model: 'googleai/gemini-1.0-pro',
+  model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are an expert educator. Your task is to generate {{numQuestions}} practice questions and their corresponding answers for the topic: {{{topic}}}. Return the questions and answers as arrays.`,
 });
 

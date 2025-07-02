@@ -1,4 +1,3 @@
-
 // This is an AI-powered chatbot designed for students to answer their queries through text, voice, and images.
 'use server';
 
@@ -65,7 +64,7 @@ const multimodalQueryPrompt = ai.definePrompt({
   input: {schema: MultimodalQueryInputSchema},
   output: {schema: MultimodalQueryOutputSchema},
   tools: [generateImageFromTextTool],
-  model: 'googleai/gemini-1.0-pro',
+  model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are an AI assistant designed to help students with their queries and app navigation via voice.
 You can receive queries in text, voice, or image format.
 
