@@ -11,7 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-export const GenerateMatchingPairsInputSchema = z.object({
+const GenerateMatchingPairsInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate the matching pairs.'),
   numPairs: z.number().min(2).max(6).default(4).describe('The number of pairs to generate.'),
 });
@@ -22,7 +22,7 @@ const PairSchema = z.object({
   definition: z.string().describe('The corresponding definition or description.'),
 });
 
-export const GenerateMatchingPairsOutputSchema = z.object({
+const GenerateMatchingPairsOutputSchema = z.object({
   pairs: z.array(PairSchema).describe('An array of term-definition pairs.'),
 });
 export type GenerateMatchingPairsOutput = z.infer<typeof GenerateMatchingPairsOutputSchema>;

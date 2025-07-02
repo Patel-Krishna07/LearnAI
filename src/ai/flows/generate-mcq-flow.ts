@@ -11,12 +11,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const GenerateMcqInputSchema = z.object({
+const GenerateMcqInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate the multiple-choice question.'),
 });
 export type GenerateMcqInput = z.infer<typeof GenerateMcqInputSchema>;
 
-export const GenerateMcqOutputSchema = z.object({
+const GenerateMcqOutputSchema = z.object({
   question: z.string().describe('The multiple-choice question.'),
   options: z.array(z.string()).length(4).describe('An array of 4 possible answers.'),
   correctAnswerIndex: z.number().min(0).max(3).describe('The index (0-3) of the correct answer in the options array.'),

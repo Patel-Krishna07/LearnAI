@@ -11,12 +11,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-export const GenerateTimedQuestionInputSchema = z.object({
+const GenerateTimedQuestionInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate the question.'),
 });
 export type GenerateTimedQuestionInput = z.infer<typeof GenerateTimedQuestionInputSchema>;
 
-export const GenerateTimedQuestionOutputSchema = z.object({
+const GenerateTimedQuestionOutputSchema = z.object({
   question: z.string().describe('A straightforward question with a concise answer.'),
   answer: z.string().describe('The correct answer to the question.'),
 });

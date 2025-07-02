@@ -11,12 +11,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-export const GenerateFillBlankInputSchema = z.object({
+const GenerateFillBlankInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate the question.'),
 });
 export type GenerateFillBlankInput = z.infer<typeof GenerateFillBlankInputSchema>;
 
-export const GenerateFillBlankOutputSchema = z.object({
+const GenerateFillBlankOutputSchema = z.object({
   question: z.string().describe('A sentence with "[BLANK]" as a placeholder for the answer.'),
   answer: z.string().describe('The word or short phrase that fills the blank.'),
 });

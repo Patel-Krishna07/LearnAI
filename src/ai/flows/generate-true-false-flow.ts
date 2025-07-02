@@ -11,12 +11,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-export const GenerateTrueFalseInputSchema = z.object({
+const GenerateTrueFalseInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate the true/false statement.'),
 });
 export type GenerateTrueFalseInput = z.infer<typeof GenerateTrueFalseInputSchema>;
 
-export const GenerateTrueFalseOutputSchema = z.object({
+const GenerateTrueFalseOutputSchema = z.object({
   statement: z.string().describe('The true or false statement.'),
   isTrue: z.boolean().describe('Whether the statement is true or false.'),
 });
