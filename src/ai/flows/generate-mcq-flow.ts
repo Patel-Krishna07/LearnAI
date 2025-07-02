@@ -18,8 +18,8 @@ export type GenerateMcqInput = z.infer<typeof GenerateMcqInputSchema>;
 
 const GenerateMcqOutputSchema = z.object({
   question: z.string().describe('The multiple-choice question.'),
-  options: z.array(z.string()).length(4).describe('An array of 4 possible answers.'),
-  correctAnswerIndex: z.number().min(0).max(3).describe('The index (0-3) of the correct answer in the options array.'),
+  options: z.array(z.string()).describe('An array of 4 possible answers.'),
+  correctAnswerIndex: z.number().describe('The index (0-3) of the correct answer in the options array.'),
 });
 export type GenerateMcqOutput = z.infer<typeof GenerateMcqOutputSchema>;
 

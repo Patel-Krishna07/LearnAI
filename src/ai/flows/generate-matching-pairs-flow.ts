@@ -13,7 +13,7 @@ import { z } from 'zod';
 
 const GenerateMatchingPairsInputSchema = z.object({
   topic: z.string().describe('The topic for which to generate the matching pairs.'),
-  numPairs: z.number().min(2).max(6).default(4).describe('The number of pairs to generate.'),
+  numPairs: z.number().describe('The number of pairs to generate.'),
 });
 export type GenerateMatchingPairsInput = z.infer<typeof GenerateMatchingPairsInputSchema>;
 
