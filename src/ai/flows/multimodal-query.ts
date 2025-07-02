@@ -64,7 +64,7 @@ const multimodalQueryPrompt = ai.definePrompt({
   input: {schema: MultimodalQueryInputSchema},
   output: {schema: MultimodalQueryOutputSchema},
   tools: [generateImageFromTextTool],
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash',
   prompt: `You are an AI assistant designed to help students with their queries and app navigation via voice.
 You can receive queries in text, voice, or image format.
 

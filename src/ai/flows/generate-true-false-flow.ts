@@ -30,7 +30,7 @@ const generateTrueFalsePrompt = ai.definePrompt({
   name: 'generateTrueFalsePrompt',
   input: { schema: GenerateTrueFalseInputSchema },
   output: { schema: GenerateTrueFalseOutputSchema },
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash',
   prompt: `You are an expert educator. Your task is to generate a single, clear true or false statement for the given topic: {{{topic}}}.
 
   The statement should be a definitive fact that is either true or false. Avoid ambiguity.

@@ -31,7 +31,7 @@ const generateMcqPrompt = ai.definePrompt({
   name: 'generateMcqPrompt',
   input: { schema: GenerateMcqInputSchema },
   output: { schema: GenerateMcqOutputSchema },
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash',
   prompt: `You are an expert educator. Your task is to generate a single, clear multiple-choice question with exactly 4 options for the given topic: {{{topic}}}.
 
   Ensure the question is relevant to the topic.
