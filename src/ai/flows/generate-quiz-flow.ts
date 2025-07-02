@@ -11,37 +11,30 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-// Schemas for different question types
-const McqQuestionSchema = z.object({
-  type: z.string().describe("The type of question. Must be 'MCQ' for this type."),
-  question: z.string().describe('The multiple-choice question.'),
-  options: z.array(z.string()).length(4).describe('An array of 4 possible answers.'),
-  correctAnswerIndex: z.number().min(0).max(3).describe('The index (0-3) of the correct answer in the options array.'),
+// A single, unified schema for all question types.
+// This is simpler for the AI model to process than a complex union type.
+const QuizQuestionSchema = z.object({
+  type: z.string().describe("The type of question. Must be one of: 'MCQ', 'TRUE_FALSE', or 'FILL_BLANK'."),
+  
+  // Fields for all types are included, but most are optional.
+  // The prompt will instruct the AI to only fill the relevant fields for the chosen type.
+  question: z.string().optional().describe('The question text. Used for MCQ and Fill-in-the-Blank types.'),
+  options: z.array(z.string()).optional().describe('An array of 4 possible answers. Used only for MCQ type.'),
+  correctAnswerIndex: z.number().optional().describe('The index (0-3) of the correct answer in the options array. Used only for MCQ type.'),
+
+  statement: z.string().optional().describe('The statement to be evaluated. Used only for TRUE_FALSE type.'),
+  isTrue: z.boolean().optional().describe('Whether the statement is true or false. Used only for TRUE_FALSE type.'),
+
+  answer: z.string().optional().describe('The word or short phrase that fills the blank. Used only for FILL_BLANK type.'),
 });
 
-const TrueFalseQuestionSchema = z.object({
-    type: z.string().describe("The type of question. Must be 'TRUE_FALSE' for this type."),
-    statement: z.string().describe('The true or false statement.'),
-    isTrue: z.boolean().describe('Whether the statement is true or false.'),
-});
 
-const FillBlankQuestionSchema = z.object({
-    type: z.string().describe("The type of question. Must be 'FILL_BLANK' for this type."),
-    question: z.string().describe('A sentence with "[BLANK]" as a placeholder for the answer.'),
-    answer: z.string().describe('The word or short phrase that fills the blank.'),
-});
-
-// A union of all possible question types
-const QuizQuestionSchema = z.union([
-    McqQuestionSchema,
-    TrueFalseQuestionSchema,
-    FillBlankQuestionSchema,
-]);
-
-export type McqQuestion = z.infer<typeof McqQuestionSchema>;
-export type TrueFalseQuestion = z.infer<typeof TrueFalseQuestionSchema>;
-export type FillBlankQuestion = z.infer<typeof FillBlankQuestionSchema>;
+// Export types for the frontend components.
+// These are based on the unified schema but add back the required fields for type safety in the components.
 export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
+export type McqQuestion = QuizQuestion & { type: 'MCQ'; question: string; options: string[]; correctAnswerIndex: number; };
+export type TrueFalseQuestion = QuizQuestion & { type: 'TRUE_FALSE'; statement: string; isTrue: boolean; };
+export type FillBlankQuestion = QuizQuestion & { type: 'FILL_BLANK'; question: string; answer: string; };
 
 
 const GenerateQuizInputSchema = z.object({
@@ -66,14 +59,29 @@ const generateQuizPrompt = ai.definePrompt({
   model: 'googleai/gemini-1.0-pro',
   prompt: `You are an expert educator. Your task is to generate a quiz with {{numQuestions}} questions on the given topic: {{{topic}}}.
 
-  The quiz should contain a mix of different question types: Multiple Choice (MCQ), True/False, and Fill-in-the-Blank.
-  For each question, set the 'type' field appropriately to one of the following exact strings: 'MCQ', 'TRUE_FALSE', or 'FILL_BLANK'.
+  The quiz must contain a mix of different question types: Multiple Choice (MCQ), True/False, and Fill-in-the-Blank.
+  For each question object in the 'questions' array, you must follow these rules VERY carefully:
 
-  For MCQ questions, provide a question, 4 options, and the index of the correct answer.
-  For True/False questions, provide a statement and whether it is true.
-  For Fill-in-the-Blank questions, provide a sentence with "[BLANK]" as a placeholder and the correct answer.
+  1.  Set the 'type' field to one of the following exact strings: 'MCQ', 'TRUE_FALSE', or 'FILL_BLANK'.
+  2.  Based on the 'type' you choose, you MUST ONLY fill the fields relevant to that type. Leave all other optional fields empty.
 
-  Return the result as a JSON object containing an array of question objects that strictly follows the schema.`,
+  - If type is 'MCQ':
+    - Fill 'question' with the question text.
+    - Fill 'options' with an array of exactly 4 strings.
+    - Fill 'correctAnswerIndex' with the number (0-3) of the correct option.
+    - DO NOT fill 'statement', 'isTrue', or 'answer'.
+
+  - If type is 'TRUE_FALSE':
+    - Fill 'statement' with the true/false statement.
+    - Fill 'isTrue' with either true or false.
+    - DO NOT fill 'question', 'options', 'correctAnswerIndex', or 'answer'.
+
+  - If type is 'FILL_BLANK':
+    - Fill 'question' with a sentence containing the exact placeholder "[BLANK]".
+    - Fill 'answer' with the word or phrase that correctly fills the blank.
+    - DO NOT fill 'options', 'correctAnswerIndex', 'statement', or 'isTrue'.
+
+  Return the result as a JSON object containing an array of question objects that strictly follows this schema and these rules.`,
 });
 
 const generateQuizFlow = ai.defineFlow(
