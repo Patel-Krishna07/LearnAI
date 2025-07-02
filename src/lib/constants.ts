@@ -1,4 +1,4 @@
-import { MessageSquareText, PenSquare, BookMarked, Settings, LogOut, UserCircle, Trophy } from 'lucide-react';
+import { MessageSquareText, PenSquare, BookMarked, Settings, LogOut, UserCircle, Trophy, ListChecks } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const APP_NAME = 'LearnAI';
@@ -12,6 +12,7 @@ export interface NavLink {
 export const MAIN_NAV_LINKS: NavLink[] = [
   { href: '/chat', label: 'Chat', icon: MessageSquareText },
   { href: '/practice', label: 'Practice', icon: PenSquare },
+  { href: '/quiz', label: 'Quiz', icon: ListChecks },
   { href: '/study-guide', label: 'Study Guide', icon: BookMarked },
   { href: '/progress', label: 'Progress', icon: Trophy },
 ];
@@ -28,11 +29,7 @@ export const AUTH_NAV_LINKS = [
 
 export const POINTS_FOR_PRACTICE_GENERATION = 10;
 export const POINTS_FOR_STUDY_GUIDE_ADD = 5;
-export const POINTS_FOR_MCQ_CORRECT = 10;
-export const POINTS_FOR_TRUE_FALSE_CORRECT = 5;
-export const POINTS_FOR_MATCHING_CORRECT = 15;
-export const POINTS_FOR_FILL_BLANK_CORRECT = 8;
-export const POINTS_FOR_TIMED_CORRECT = 12;
+export const POINTS_FOR_QUIZ_QUESTION_CORRECT = 10;
 
 
 export interface BadgeDefinition {
