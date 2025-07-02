@@ -289,7 +289,7 @@ export default function QuizPage() {
                     <TabsContent value="mcq">
                         <Card><CardHeader><CardTitle>Generate a Multiple-Choice Question</CardTitle></CardHeader>
                             <CardContent>
-                                <Form {...mcqForm}><form onSubmit={mcqForm.handleSubmit(data => handleGenerate('mcq', data.topic))} className="flex gap-2 items-start">
+                                <Form {...mcqForm}><form onSubmit={mcqForm.handleSubmit(data => handleGenerate('mcq', data.topic))} className="flex gap-2 items-baseline">
                                     <FormField control={mcqForm.control} name="topic" render={({ field }) => (<FormItem className="flex-grow"><ShadFormLabel className="sr-only">Topic</ShadFormLabel><FormControl><Input placeholder="e.g., The French Revolution" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" disabled={loading.mcq}>{loading.mcq ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
@@ -303,7 +303,7 @@ export default function QuizPage() {
                     <TabsContent value="true-false">
                         <Card><CardHeader><CardTitle>Generate a True/False Question</CardTitle></CardHeader>
                             <CardContent>
-                                <Form {...trueFalseForm}><form onSubmit={trueFalseForm.handleSubmit(data => handleGenerate('trueFalse', data.topic))} className="flex gap-2 items-start">
+                                <Form {...trueFalseForm}><form onSubmit={trueFalseForm.handleSubmit(data => handleGenerate('trueFalse', data.topic))} className="flex gap-2 items-baseline">
                                     <FormField control={trueFalseForm.control} name="topic" render={({ field }) => (<FormItem className="flex-grow"><ShadFormLabel className="sr-only">Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Human Anatomy" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" disabled={loading.trueFalse}>{loading.trueFalse ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
@@ -317,7 +317,7 @@ export default function QuizPage() {
                     <TabsContent value="fill-blank">
                         <Card><CardHeader><CardTitle>Generate a Fill-in-the-Blank Question</CardTitle></CardHeader>
                             <CardContent>
-                                <Form {...fillBlankForm}><form onSubmit={fillBlankForm.handleSubmit(data => handleGenerate('fillBlank', data.topic))} className="flex gap-2 items-start">
+                                <Form {...fillBlankForm}><form onSubmit={fillBlankForm.handleSubmit(data => handleGenerate('fillBlank', data.topic))} className="flex gap-2 items-baseline">
                                     <FormField control={fillBlankForm.control} name="topic" render={({ field }) => (<FormItem className="flex-grow"><ShadFormLabel className="sr-only">Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Famous Poets" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" disabled={loading.fillBlank}>{loading.fillBlank ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
@@ -348,5 +348,7 @@ export default function QuizPage() {
     );
 }
 
+
+    
 
     
