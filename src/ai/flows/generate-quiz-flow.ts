@@ -13,20 +13,20 @@ import { z } from 'zod';
 
 // Schemas for different question types
 const McqQuestionSchema = z.object({
-  type: z.literal('MCQ'),
+  type: z.enum(['MCQ']),
   question: z.string().describe('The multiple-choice question.'),
   options: z.array(z.string()).length(4).describe('An array of 4 possible answers.'),
   correctAnswerIndex: z.number().min(0).max(3).describe('The index (0-3) of the correct answer in the options array.'),
 });
 
 const TrueFalseQuestionSchema = z.object({
-    type: z.literal('TRUE_FALSE'),
+    type: z.enum(['TRUE_FALSE']),
     statement: z.string().describe('The true or false statement.'),
     isTrue: z.boolean().describe('Whether the statement is true or false.'),
 });
 
 const FillBlankQuestionSchema = z.object({
-    type: z.literal('FILL_BLANK'),
+    type: z.enum(['FILL_BLANK']),
     question: z.string().describe('A sentence with "[BLANK]" as a placeholder for the answer.'),
     answer: z.string().describe('The word or short phrase that fills the blank.'),
 });
