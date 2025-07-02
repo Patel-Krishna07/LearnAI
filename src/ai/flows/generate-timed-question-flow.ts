@@ -30,7 +30,7 @@ const generateTimedQuestionPrompt = ai.definePrompt({
   name: 'generateTimedQuestionPrompt',
   input: { schema: GenerateTimedQuestionInputSchema },
   output: { schema: GenerateTimedQuestionOutputSchema },
-  model: 'googleai/gemini-pro',
+  model: 'googleai/gemini-1.0-pro',
   prompt: `You are an expert educator. Your task is to generate a single, straightforward question suitable for a timed challenge on the topic: {{{topic}}}.
 
   The question should be answerable quickly with a word or number. Avoid long or complex answers.

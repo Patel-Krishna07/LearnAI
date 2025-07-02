@@ -63,7 +63,7 @@ const generateQuizPrompt = ai.definePrompt({
   name: 'generateQuizPrompt',
   input: { schema: GenerateQuizInputSchema },
   output: { schema: GenerateQuizOutputSchema },
-  model: 'googleai/gemini-pro',
+  model: 'googleai/gemini-1.0-pro',
   prompt: `You are an expert educator. Your task is to generate a quiz with {{numQuestions}} questions on the given topic: {{{topic}}}.
 
   The quiz should contain a mix of different question types: Multiple Choice (MCQ), True/False, and Fill-in-the-Blank.

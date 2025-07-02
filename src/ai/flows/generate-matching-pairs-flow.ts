@@ -35,7 +35,7 @@ const generateMatchingPairsPrompt = ai.definePrompt({
   name: 'generateMatchingPairsPrompt',
   input: { schema: GenerateMatchingPairsInputSchema },
   output: { schema: GenerateMatchingPairsOutputSchema },
-  model: 'googleai/gemini-pro',
+  model: 'googleai/gemini-1.0-pro',
   prompt: `You are an expert educator. Your task is to generate {{numPairs}} distinct matching pairs (term and definition) for the given topic: {{{topic}}}.
 
   The terms should be specific and the definitions should be clear and concise.
