@@ -1,11 +1,12 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel as ShadFormLabel } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -14,58 +15,58 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ListChecks, Lightbulb, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
-import { generateQuiz, type GenerateQuizInput, type QuizQuestion, type McqQuestion, type TrueFalseQuestion, type FillBlankQuestion } from '@/ai/flows/generate-quiz-flow';
+import { ListChecks, Lightbulb, Sparkles, CheckCircle2, XCircle, Shuffle, Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { POINTS_FOR_QUIZ_QUESTION_CORRECT } from '@/lib/constants';
 
+import { generateMcq, type GenerateMcqOutput } from '@/ai/flows/generate-mcq-flow';
+import { generateTrueFalse, type GenerateTrueFalseOutput } from '@/ai/flows/generate-true-false-flow';
+import { generateFillBlank, type GenerateFillBlankOutput } from '@/ai/flows/generate-fill-blank-flow';
+import { generateMatchingPairs, type GenerateMatchingPairsOutput, type GenerateMatchingPairsInput } from '@/ai/flows/generate-matching-pairs-flow';
+
+
+// Schemas
 const QuizTopicSchema = z.object({
-  topic: z.string().min(3, { message: 'Topic must be at least 3 characters.' }),
-  numQuestions: z.coerce.number().min(3, 'Must have at least 3 questions.').max(10, 'Cannot have more than 10 questions.').default(5),
+  topic: z.string().min(3, { message: 'Topic must be at least 3 characters long.' }),
 });
 type QuizTopicFormData = z.infer<typeof QuizTopicSchema>;
 
-// Individual Question Components
+const MatchingTopicSchema = z.object({
+  topic: z.string().min(3, { message: 'Topic must be at least 3 characters long.' }),
+  numPairs: z.coerce.number().min(3, 'Must have at least 3 pairs.').max(6, 'Cannot have more than 6 pairs.').default(4),
+});
+type MatchingTopicFormData = z.infer<typeof MatchingTopicSchema>;
 
-const McqQuestionComponent = ({ question, onCorrect }: { question: McqQuestion, onCorrect: () => void }) => {
-  const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
+
+// --- Interactive Question Components ---
+
+const McqComponent = ({ question, onCorrect }: { question: GenerateMcqOutput, onCorrect: () => void }) => {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const handleSelectAnswer = (selectedIndex: number) => {
-    if (selectedAnswerIndex !== null) return;
-    setSelectedAnswerIndex(selectedIndex);
-    const isCorrect = selectedIndex === question.correctAnswerIndex;
-    if (isCorrect) {
+  const handleSelect = (index: number) => {
+    if (selectedIndex !== null) return;
+    setSelectedIndex(index);
+    if (index === question.correctAnswerIndex) {
       onCorrect();
-      toast({ title: 'Correct!', description: `You earned ${POINTS_FOR_QUIZ_QUESTION_CORRECT} XP points!` });
+      toast({ title: 'Correct!', description: `+${POINTS_FOR_QUIZ_QUESTION_CORRECT} XP!` });
     } else {
-      toast({ title: 'Not quite', description: 'Try another question!', variant: 'destructive' });
+      toast({ title: 'Not quite!', variant: 'destructive' });
     }
   };
 
   return (
-    <Card className="shadow-md">
-      <CardHeader>
-        <CardTitle className="font-headline text-lg">{question.question}</CardTitle>
-        <CardDescription>Select one of the following options.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    <Card className="shadow-md mt-6">
+      <CardHeader><CardTitle className="font-headline text-lg">{question.question}</CardTitle></CardHeader>
+      <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {question.options.map((option, index) => {
-          const isSelected = selectedAnswerIndex === index;
+          const isSelected = selectedIndex === index;
           const isCorrect = question.correctAnswerIndex === index;
-          const hasBeenAnswered = selectedAnswerIndex !== null;
+          const hasBeenAnswered = selectedIndex !== null;
           return (
             <Button
-              key={index}
-              variant="outline"
-              onClick={() => handleSelectAnswer(index)}
-              disabled={hasBeenAnswered}
-              className={cn(
-                "justify-start text-left h-auto py-2",
-                hasBeenAnswered && isCorrect && "border-green-500 bg-green-500/10 text-green-700 hover:bg-green-500/20",
-                hasBeenAnswered && !isCorrect && isSelected && "border-red-500 bg-red-500/10 text-red-700 hover:bg-red-500/20",
-                "disabled:opacity-100 disabled:cursor-not-allowed"
-              )}
+              key={index} variant="outline" onClick={() => handleSelect(index)} disabled={hasBeenAnswered}
+              className={cn("justify-start text-left h-auto py-2", hasBeenAnswered && isCorrect && "border-green-500 bg-green-500/10", hasBeenAnswered && !isCorrect && isSelected && "border-red-500 bg-red-500/10", "disabled:opacity-100 disabled:cursor-not-allowed")}
             >
               {option}
               {hasBeenAnswered && isCorrect && <CheckCircle2 className="ml-auto h-5 w-5 text-green-500" />}
@@ -78,13 +79,13 @@ const McqQuestionComponent = ({ question, onCorrect }: { question: McqQuestion, 
   );
 };
 
-const TrueFalseComponent = ({ question, onCorrect }: { question: TrueFalseQuestion, onCorrect: () => void }) => {
-  const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
+const TrueFalseComponent = ({ question, onCorrect }: { question: GenerateTrueFalseOutput, onCorrect: () => void }) => {
+  const [selected, setSelected] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   const handleSelect = (answer: boolean) => {
-    if (selectedAnswer !== null) return;
-    setSelectedAnswer(answer);
+    if (selected !== null) return;
+    setSelected(answer);
     if (answer === question.isTrue) {
       onCorrect();
       toast({ title: 'Correct!', description: `+${POINTS_FOR_QUIZ_QUESTION_CORRECT} XP!` });
@@ -94,223 +95,258 @@ const TrueFalseComponent = ({ question, onCorrect }: { question: TrueFalseQuesti
   };
 
   return (
-    <Card className="shadow-md">
-      <CardHeader>
-        <CardTitle className="font-headline text-lg">{question.statement}</CardTitle>
-        <CardDescription>Is this statement True or False?</CardDescription>
-      </CardHeader>
+    <Card className="shadow-md mt-6">
+      <CardHeader><CardTitle className="font-headline text-lg">{question.statement}</CardTitle></CardHeader>
       <CardContent className="flex gap-4 justify-center">
-        {[true, false].map(val => {
-          const isSelected = selectedAnswer === val;
-          const isCorrect = question.isTrue === val;
-          const hasBeenAnswered = selectedAnswer !== null;
-          return (
-            <Button
-              key={String(val)}
-              onClick={() => handleSelect(val)}
-              disabled={hasBeenAnswered}
-              className={cn("w-24", hasBeenAnswered && isCorrect && "border-green-500 bg-green-500/10 text-green-700", hasBeenAnswered && !isCorrect && isSelected && "border-red-500 bg-red-500/10 text-red-700", "disabled:opacity-100 disabled:cursor-not-allowed")}
-            >
-              {val ? "True" : "False"}
-              {hasBeenAnswered && isCorrect && <CheckCircle2 className="ml-auto h-5 w-5" />}
-              {hasBeenAnswered && !isCorrect && isSelected && <XCircle className="ml-auto h-5 w-5" />}
-            </Button>
-          )
-        })}
+        {[true, false].map(val => (
+          <Button
+            key={String(val)} onClick={() => handleSelect(val)} disabled={selected !== null}
+            className={cn("w-24", selected !== null && (question.isTrue === val ? "border-green-500 bg-green-500/10" : (selected === val ? "border-red-500 bg-red-500/10" : "")), "disabled:opacity-100 disabled:cursor-not-allowed")}
+          >
+            {val ? "True" : "False"}
+          </Button>
+        ))}
       </CardContent>
     </Card>
-  )
+  );
 };
 
-const FillBlankComponent = ({ question, onCorrect }: { question: FillBlankQuestion, onCorrect: () => void }) => {
-  const [userAnswer, setUserAnswer] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
+const FillBlankComponent = ({ question, onCorrect }: { question: GenerateFillBlankOutput, onCorrect: () => void }) => {
+  const [answer, setAnswer] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
 
-  const handleCheckAnswer = () => {
-    if (isSubmitted) return;
-    setIsSubmitted(true);
-    if (userAnswer.trim().toLowerCase() === question.answer.toLowerCase()) {
+  const handleCheck = () => {
+    if (submitted) return;
+    setSubmitted(true);
+    if (answer.trim().toLowerCase() === question.answer.toLowerCase()) {
       onCorrect();
       toast({ title: 'Correct!', description: `+${POINTS_FOR_QUIZ_QUESTION_CORRECT} XP!` });
     } else {
-      toast({ title: 'Not quite!', description: `The correct answer was: ${question.answer}`, variant: 'destructive' });
+      toast({ title: 'Not quite!', description: `Correct answer: ${question.answer}`, variant: 'destructive' });
     }
   };
-
-  const questionParts = question.question.split('[BLANK]');
-
+  const parts = question.question.split('[BLANK]');
   return (
-    <Card className="shadow-md">
-       <CardHeader>
-        <CardTitle className="font-headline text-lg">Fill in the blank</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2 text-md">
-          <span>{questionParts[0]}</span>
-          <Input 
-            type="text" 
-            placeholder="Your answer" 
-            value={userAnswer} 
-            onChange={e => setUserAnswer(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCheckAnswer()}
-            disabled={isSubmitted}
-            className={cn("w-36 h-8", isSubmitted && (userAnswer.trim().toLowerCase() === question.answer.toLowerCase() ? "border-green-500" : "border-red-500"))}
-          />
-          <span>{questionParts[1]}</span>
-        </div>
-        {isSubmitted && userAnswer.trim().toLowerCase() !== question.answer.toLowerCase() && (
-          <p className="text-sm text-red-500">Correct answer: <strong>{question.answer}</strong></p>
-        )}
+    <Card className="shadow-md mt-6">
+      <CardHeader><CardTitle className="font-headline text-lg">Fill in the blank</CardTitle></CardHeader>
+      <CardContent className="flex flex-wrap items-center gap-2">
+        <span>{parts[0]}</span>
+        <Input value={answer} onChange={e => setAnswer(e.target.value)} disabled={submitted} onKeyDown={e => e.key === 'Enter' && handleCheck()} className="w-40" />
+        <span>{parts[1]}</span>
       </CardContent>
       <CardFooter>
-        <Button onClick={handleCheckAnswer} disabled={isSubmitted}>Check Answer</Button>
+        <Button onClick={handleCheck} disabled={submitted}>Check Answer</Button>
       </CardFooter>
     </Card>
-  )
-}
-
-export default function QuizPage() {
-  const { isAuthenticated, loading: authLoading, addPoints } = useAuth();
-  const router = useRouter();
-  const [quiz, setQuiz] = useState<QuizQuestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-  
-  const form = useForm<QuizTopicFormData>({
-    resolver: zodResolver(QuizTopicSchema),
-    defaultValues: { topic: '', numQuestions: 5 },
-  });
-
-  const onSubmit = async (data: QuizTopicFormData) => {
-    setIsLoading(true);
-    setQuiz([]);
-    try {
-      const result = await generateQuiz({ topic: data.topic, numQuestions: data.numQuestions });
-      if (result.questions && result.questions.length > 0) {
-        setQuiz(result.questions);
-      } else {
-        toast({ title: 'No quiz generated', description: 'The AI could not generate a quiz for this topic. Please try another one.' });
-      }
-    } catch (error) {
-      console.error('Error generating quiz:', error);
-      toast({ title: 'Error', description: 'Failed to generate quiz. Please try again.', variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  if (authLoading) {
-    return (
-      <AppShell>
-        <div className="flex items-center justify-center h-[calc(100vh-150px)]">
-          <Sparkles className="h-12 w-12 text-accent animate-spin" />
-          <p className="ml-4 text-xl text-muted-foreground">Loading quiz area...</p>
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (!isAuthenticated) {
-    router.push('/login?redirect=/quiz');
-    return null; // or a loading skeleton
-  }
-
-  return (
-    <AppShell>
-      <div className="max-w-3xl mx-auto">
-        <header className="mb-8 text-center">
-          <ListChecks className="h-16 w-16 text-accent mx-auto mb-4" />
-          <h1 className="text-4xl font-bold mb-2 font-headline">Topic Quiz Generator</h1>
-          <p className="text-lg text-muted-foreground">
-            Challenge yourself with a mix of questions on any topic.
-          </p>
-        </header>
-
-        <Card className="shadow-lg mb-8">
-          <CardHeader>
-            <CardTitle className="text-2xl font-headline">Generate a New Quiz</CardTitle>
-            <CardDescription>Enter a topic and the number of questions you want.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="topic"
-                  render={({ field }) => (
-                    <FormItem>
-                      <ShadFormLabel htmlFor="topic">Topic</ShadFormLabel>
-                      <FormControl>
-                        <Input id="topic" placeholder="e.g., The Roman Empire, Quantum Physics" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="numQuestions"
-                  render={({ field }) => (
-                    <FormItem>
-                      <ShadFormLabel htmlFor="numQuestions">Number of Questions (3-10)</ShadFormLabel>
-                      <FormControl>
-                        <Input id="numQuestions" type="number" min="3" max="10" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Generating...' : 'Generate Quiz'}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        {isLoading && (
-          <div className="space-y-4">
-            {[...Array(form.getValues("numQuestions"))].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
-                <CardContent><Skeleton className="h-10 w-full" /></CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {quiz.length > 0 && (
-           <div className="space-y-4">
-            <h2 className="text-2xl font-semibold mb-6 text-center font-headline">
-              Your Quiz on &quot;{form.getValues("topic")}&quot;
-            </h2>
-            {quiz.map((q, index) => {
-              const key = `${q.type}-${index}`;
-              switch (q.type) {
-                case 'MCQ':
-                  return <McqQuestionComponent key={key} question={q} onCorrect={() => addPoints(POINTS_FOR_QUIZ_QUESTION_CORRECT)} />;
-                case 'TRUE_FALSE':
-                  return <TrueFalseComponent key={key} question={q} onCorrect={() => addPoints(POINTS_FOR_QUIZ_QUESTION_CORRECT)} />;
-                case 'FILL_BLANK':
-                  return <FillBlankComponent key={key} question={q} onCorrect={() => addPoints(POINTS_FOR_QUIZ_QUESTION_CORRECT)} />;
-                default:
-                  return null;
-              }
-            })}
-          </div>
-        )}
-
-        {!isLoading && quiz.length === 0 && form.formState.isSubmitted && (
-           <Card className="text-center p-8 bg-secondary">
-            <Lightbulb className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <CardTitle className="text-xl font-headline mb-2">No Quiz Yet</CardTitle>
-            <CardDescription>
-              The AI couldn&apos;t generate a quiz for that topic. Please try being more specific or try a different topic.
-            </CardDescription>
-          </Card>
-        )}
-      </div>
-    </AppShell>
   );
+};
+
+const MatchingPairsComponent = ({ pairs, onCorrect }: { pairs: GenerateMatchingPairsOutput['pairs'], onCorrect: (points: number) => void }) => {
+    const [shuffledDefs, setShuffledDefs] = useState<{ id: number; text: string }[]>([]);
+    const [selectedTerm, setSelectedTerm] = useState<{ id: number; text: string } | null>(null);
+    const [matchedPairs, setMatchedPairs] = useState<number[]>([]);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        setShuffledDefs(
+            pairs
+                .map((p, i) => ({ id: i, text: p.definition }))
+                .sort(() => Math.random() - 0.5)
+        );
+        setMatchedPairs([]);
+        setSelectedTerm(null);
+    }, [pairs]);
+
+    const handleTermClick = (term: string, index: number) => {
+        if (matchedPairs.includes(index)) return;
+        setSelectedTerm({ id: index, text: term });
+    };
+    
+    const handleDefClick = (def: string, index: number) => {
+        if (!selectedTerm || matchedPairs.includes(selectedTerm.id)) return;
+
+        if (pairs[selectedTerm.id].definition === def) {
+            const newMatchedPairs = [...matchedPairs, selectedTerm.id];
+            setMatchedPairs(newMatchedPairs);
+            toast({ title: 'Match Found!', description: 'Great job!' });
+            if (newMatchedPairs.length === pairs.length) {
+                toast({ title: 'Challenge Complete!', description: `You earned ${POINTS_FOR_QUIZ_QUESTION_CORRECT * pairs.length} XP!` });
+                onCorrect(POINTS_FOR_QUIZ_QUESTION_CORRECT * pairs.length);
+            }
+        } else {
+            toast({ title: 'Not a match!', description: 'Try again.', variant: 'destructive' });
+        }
+        setSelectedTerm(null);
+    };
+
+    return (
+        <Card className="shadow-md mt-6">
+            <CardHeader><CardTitle className="font-headline text-lg">Match the Terms and Definitions</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <h3 className="font-semibold text-center text-primary">Terms</h3>
+                    {pairs.map((p, i) => (
+                        <Button
+                            key={`term-${i}`} variant="outline" onClick={() => handleTermClick(p.term, i)}
+                            disabled={matchedPairs.includes(i)}
+                            className={cn("w-full h-auto text-left justify-start p-2", selectedTerm?.id === i && "ring-2 ring-primary", matchedPairs.includes(i) && "bg-green-100 border-green-300 text-muted-foreground")}
+                        >
+                            {p.term}
+                        </Button>
+                    ))}
+                </div>
+                <div className="space-y-2">
+                    <h3 className="font-semibold text-center text-primary">Definitions</h3>
+                     {shuffledDefs.map((d, i) => {
+                        const originalIndex = pairs.findIndex(p => p.definition === d.text);
+                        const isMatched = matchedPairs.includes(originalIndex);
+                        return (
+                            <Button
+                                key={`def-${i}`} variant="outline" onClick={() => handleDefClick(d.text, i)}
+                                disabled={isMatched}
+                                className={cn("w-full h-auto text-left justify-start p-2", isMatched && "bg-green-100 border-green-300 text-muted-foreground")}
+                            >
+                                {d.text}
+                            </Button>
+                        )
+                    })}
+                </div>
+            </CardContent>
+        </Card>
+    )
 }
+
+// --- Main Page Component ---
+export default function QuizPage() {
+    const { isAuthenticated, loading: authLoading, addPoints } = useAuth();
+    const router = useRouter();
+    const { toast } = useToast();
+    
+    // State for each quiz type
+    const [mcq, setMcq] = useState<GenerateMcqOutput | null>(null);
+    const [trueFalse, setTrueFalse] = useState<GenerateTrueFalseOutput | null>(null);
+    const [fillBlank, setFillBlank] = useState<GenerateFillBlankOutput | null>(null);
+    const [matchingPairs, setMatchingPairs] = useState<GenerateMatchingPairsOutput | null>(null);
+
+    const [loading, setLoading] = useState({ mcq: false, trueFalse: false, fillBlank: false, matching: false });
+
+    // Forms
+    const mcqForm = useForm<QuizTopicFormData>({ resolver: zodResolver(QuizTopicSchema), defaultValues: { topic: '' } });
+    const trueFalseForm = useForm<QuizTopicFormData>({ resolver: zodResolver(QuizTopicSchema), defaultValues: { topic: '' } });
+    const fillBlankForm = useForm<QuizTopicFormData>({ resolver: zodResolver(QuizTopicSchema), defaultValues: { topic: '' } });
+    const matchingForm = useForm<MatchingTopicFormData>({ resolver: zodResolver(MatchingTopicSchema), defaultValues: { topic: '', numPairs: 4 } });
+
+    // Auth redirection
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) router.push('/login?redirect=/quiz');
+    }, [authLoading, isAuthenticated, router]);
+
+    const handleGenerate = async (type: keyof typeof loading, topic: string, options?: any) => {
+        setLoading(prev => ({ ...prev, [type]: true }));
+        try {
+            let result;
+            if (type === 'mcq') result = await generateMcq({ topic });
+            else if (type === 'trueFalse') result = await generateTrueFalse({ topic });
+            else if (type === 'fillBlank') result = await generateFillBlank({ topic });
+            else if (type === 'matching') result = await generateMatchingPairs({ topic, numPairs: options.numPairs });
+            
+            if (type === 'mcq') setMcq(result as GenerateMcqOutput);
+            if (type === 'trueFalse') setTrueFalse(result as GenerateTrueFalseOutput);
+            if (type === 'fillBlank') setFillBlank(result as GenerateFillBlankOutput);
+            if (type === 'matching') setMatchingPairs(result as GenerateMatchingPairsOutput);
+            
+        } catch (error) {
+            console.error(`Error generating ${type}:`, error);
+            toast({ title: 'Error', description: `Failed to generate ${type} question. Please try again.`, variant: 'destructive' });
+        } finally {
+            setLoading(prev => ({ ...prev, [type]: false }));
+        }
+    };
+    
+    if (authLoading || !isAuthenticated) {
+        return <AppShell><div className="flex items-center justify-center h-[calc(100vh-150px)]"><Sparkles className="h-12 w-12 text-accent animate-spin" /><p className="ml-4 text-xl text-muted-foreground">Loading quiz hub...</p></div></AppShell>;
+    }
+
+    return (
+        <AppShell>
+            <div className="max-w-3xl mx-auto">
+                <header className="mb-8 text-center">
+                    <ListChecks className="h-16 w-16 text-accent mx-auto mb-4" />
+                    <h1 className="text-4xl font-bold mb-2 font-headline">Quiz Hub</h1>
+                    <p className="text-lg text-muted-foreground">Generate different types of quizzes on any topic to test your knowledge.</p>
+                </header>
+
+                <Tabs defaultValue="mcq" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+                        <TabsTrigger value="mcq">Multiple Choice</TabsTrigger>
+                        <TabsTrigger value="true-false">True/False</TabsTrigger>
+                        <TabsTrigger value="fill-blank">Fill the Blank</TabsTrigger>
+                        <TabsTrigger value="matching">Matching Pairs</TabsTrigger>
+                    </TabsList>
+                    
+                    {/* MCQ Tab */}
+                    <TabsContent value="mcq">
+                        <Card><CardHeader><CardTitle>Generate a Multiple-Choice Question</CardTitle></CardHeader>
+                            <CardContent>
+                                <Form {...mcqForm}><form onSubmit={mcqForm.handleSubmit(data => handleGenerate('mcq', data.topic))} className="flex gap-2 items-start">
+                                    <FormField control={mcqForm.control} name="topic" render={({ field }) => (<FormItem className="flex-grow"><ShadFormLabel className="sr-only">Topic</ShadFormLabel><FormControl><Input placeholder="e.g., The French Revolution" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <Button type="submit" disabled={loading.mcq}>{loading.mcq ? 'Generating...' : 'Generate'}</Button>
+                                </form></Form>
+                            </CardContent>
+                        </Card>
+                        {loading.mcq && <Skeleton className="h-48 w-full mt-6" />}
+                        {mcq && <McqComponent question={mcq} onCorrect={() => addPoints(POINTS_FOR_QUIZ_QUESTION_CORRECT)} />}
+                    </TabsContent>
+
+                    {/* True/False Tab */}
+                    <TabsContent value="true-false">
+                        <Card><CardHeader><CardTitle>Generate a True/False Question</CardTitle></CardHeader>
+                            <CardContent>
+                                <Form {...trueFalseForm}><form onSubmit={trueFalseForm.handleSubmit(data => handleGenerate('trueFalse', data.topic))} className="flex gap-2 items-start">
+                                    <FormField control={trueFalseForm.control} name="topic" render={({ field }) => (<FormItem className="flex-grow"><ShadFormLabel className="sr-only">Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Human Anatomy" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <Button type="submit" disabled={loading.trueFalse}>{loading.trueFalse ? 'Generating...' : 'Generate'}</Button>
+                                </form></Form>
+                            </CardContent>
+                        </Card>
+                        {loading.trueFalse && <Skeleton className="h-32 w-full mt-6" />}
+                        {trueFalse && <TrueFalseComponent question={trueFalse} onCorrect={() => addPoints(POINTS_FOR_QUIZ_QUESTION_CORRECT)} />}
+                    </TabsContent>
+
+                    {/* Fill the Blank Tab */}
+                    <TabsContent value="fill-blank">
+                        <Card><CardHeader><CardTitle>Generate a Fill-in-the-Blank Question</CardTitle></CardHeader>
+                            <CardContent>
+                                <Form {...fillBlankForm}><form onSubmit={fillBlankForm.handleSubmit(data => handleGenerate('fillBlank', data.topic))} className="flex gap-2 items-start">
+                                    <FormField control={fillBlankForm.control} name="topic" render={({ field }) => (<FormItem className="flex-grow"><ShadFormLabel className="sr-only">Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Famous Poets" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <Button type="submit" disabled={loading.fillBlank}>{loading.fillBlank ? 'Generating...' : 'Generate'}</Button>
+                                </form></Form>
+                            </CardContent>
+                        </Card>
+                        {loading.fillBlank && <Skeleton className="h-32 w-full mt-6" />}
+                        {fillBlank && <FillBlankComponent question={fillBlank} onCorrect={() => addPoints(POINTS_FOR_QUIZ_QUESTION_CORRECT)} />}
+                    </TabsContent>
+
+                     {/* Matching Pairs Tab */}
+                    <TabsContent value="matching">
+                        <Card><CardHeader><CardTitle>Generate a Matching Pairs Challenge</CardTitle></CardHeader>
+                             <CardContent>
+                                <Form {...matchingForm}><form onSubmit={matchingForm.handleSubmit(data => handleGenerate('matching', data.topic, { numPairs: data.numPairs }))} className="space-y-4">
+                                     <FormField control={matchingForm.control} name="topic" render={({ field }) => (<FormItem><ShadFormLabel>Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Chemical Elements" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={matchingForm.control} name="numPairs" render={({ field }) => (<FormItem><ShadFormLabel>Number of Pairs (3-6)</ShadFormLabel><FormControl><Input type="number" min="3" max="6" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <Button type="submit" disabled={loading.matching} className="w-full">{loading.matching ? 'Generating...' : 'Generate'}</Button>
+                                </form></Form>
+                            </CardContent>
+                        </Card>
+                        {loading.matching && <Skeleton className="h-64 w-full mt-6" />}
+                        {matchingPairs && <MatchingPairsComponent pairs={matchingPairs.pairs} onCorrect={(points) => addPoints(points)} />}
+                    </TabsContent>
+
+                </Tabs>
+            </div>
+        </AppShell>
+    );
+}
+
+
+    
