@@ -29,6 +29,11 @@ export const AUTH_NAV_LINKS = [
 export const POINTS_FOR_PRACTICE_GENERATION = 10;
 export const POINTS_FOR_STUDY_GUIDE_ADD = 5;
 export const POINTS_FOR_MCQ_CORRECT = 10;
+export const POINTS_FOR_TRUE_FALSE_CORRECT = 5;
+export const POINTS_FOR_MATCHING_CORRECT = 15;
+export const POINTS_FOR_FILL_BLANK_CORRECT = 8;
+export const POINTS_FOR_TIMED_CORRECT = 12;
+
 
 export interface BadgeDefinition {
   name: string;
