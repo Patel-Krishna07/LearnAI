@@ -11,11 +11,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
-import { Award, BarChart3, Brain, Compass, Diamond, GraduationCap, ShieldCheck, Sparkles, Star, Trophy, Zap, ListChecks, ToggleRight, Link2, PenLine, Timer, CheckCircle2, XCircle, Gift, TrendingUp } from 'lucide-react';
+import { Award, BarChart3, Brain, Compass, Diamond, GraduationCap, ShieldCheck, Sparkles, Star, Trophy, Zap, ListChecks, ToggleRight, Link2, PenLine, Timer, CheckCircle2, XCircle, Gift, TrendingUp, Lightbulb } from 'lucide-react';
 import type { User, LeaderboardUser, BadgeDefinition as BadgeDefinitionType } from '@/lib/types';
-import { BADGE_DEFINITIONS } from '@/lib/constants';
+import { BADGE_DEFINITIONS, POINTS_FOR_MCQ_CORRECT } from '@/lib/constants';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { LucideIcon } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { generateMcq, type GenerateMcqOutput } from '@/ai/flows/generate-mcq-flow';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+
 
 // Map badge names to Lucide icons
 const badgeIcons: { [key: string]: LucideIcon } = {
@@ -30,10 +35,17 @@ const badgeIcons: { [key: string]: LucideIcon } = {
 const LEARN_AI_LEADERBOARD_KEY = 'learnai-leaderboard-users';
 
 export default function ProgressPage() {
-  const { isAuthenticated, user, loading: authLoading } = useAuth();
+  const { isAuthenticated, user, loading: authLoading, addPoints } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
+
+  // States for MCQ feature
+  const [mcqTopic, setMcqTopic] = useState('');
+  const [generatedMcq, setGeneratedMcq] = useState<GenerateMcqOutput | null>(null);
+  const [isLoadingMcq, setIsLoadingMcq] = useState(false);
+  const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
 
   // Placeholder for progress bar data
   const currentXP = user?.points || 0;
@@ -63,6 +75,46 @@ export default function ProgressPage() {
       setPageLoading(false);
     }
   }, [isAuthenticated, user]);
+
+  const handleGenerateMcq = async () => {
+    if (!mcqTopic.trim()) {
+      toast({ title: "Topic is required", description: "Please enter a topic to generate a question.", variant: "destructive" });
+      return;
+    }
+    setIsLoadingMcq(true);
+    setGeneratedMcq(null);
+    setSelectedAnswerIndex(null);
+    try {
+      const result = await generateMcq({ topic: mcqTopic });
+      setGeneratedMcq(result);
+    } catch (error) {
+      console.error('Error generating MCQ:', error);
+      toast({ title: 'Error', description: 'Failed to generate a question. Please try a different topic.', variant: 'destructive' });
+    } finally {
+      setIsLoadingMcq(false);
+    }
+  };
+
+  const handleSelectAnswer = (selectedIndex: number) => {
+    if (selectedAnswerIndex !== null || !generatedMcq) return; // Already answered
+
+    setSelectedAnswerIndex(selectedIndex);
+    const isCorrect = selectedIndex === generatedMcq.correctAnswerIndex;
+
+    if (isCorrect) {
+      addPoints(POINTS_FOR_MCQ_CORRECT);
+      toast({
+        title: 'Correct!',
+        description: `You earned ${POINTS_FOR_MCQ_CORRECT} XP points!`,
+      });
+    } else {
+      toast({
+        title: 'Not quite',
+        description: 'Try another question!',
+        variant: 'destructive',
+      });
+    }
+  };
 
   if (authLoading || (pageLoading && isAuthenticated)) {
     return (
@@ -233,20 +285,72 @@ export default function ProgressPage() {
               <CardTitle className="text-xl font-headline flex items-center gap-2">
                 <ListChecks className="text-primary h-6 w-6" /> Quick MCQs
               </CardTitle>
-              <CardDescription>Test your knowledge with multiple choice questions. Earn +10 XP for right answer!</CardDescription>
+              <CardDescription>Test your knowledge with multiple choice questions. Earn +{POINTS_FOR_MCQ_CORRECT} XP for a right answer!</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="font-semibold">What is the powerhouse of the cell?</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button variant="outline">a) Nucleus</Button>
-                <Button variant="outline">b) Ribosome</Button>
-                <Button variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">c) Mitochondria <CheckCircle2 className="ml-2 h-4 w-4 text-green-500"/></Button>
-                <Button variant="outline">d) Cell wall</Button>
-              </div>
-              <p className="text-sm text-muted-foreground italic">Static example. Full interactivity & XP to be added.</p>
+              {isLoadingMcq && (
+                <div className="space-y-4">
+                  <Skeleton className="h-6 w-3/4" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              )}
+              {!isLoadingMcq && generatedMcq ? (
+                <>
+                  <p className="font-semibold">{generatedMcq.question}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {generatedMcq.options.map((option, index) => {
+                      const isSelected = selectedAnswerIndex === index;
+                      const isCorrect = generatedMcq.correctAnswerIndex === index;
+                      const hasBeenAnswered = selectedAnswerIndex !== null;
+
+                      return (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          onClick={() => handleSelectAnswer(index)}
+                          disabled={hasBeenAnswered}
+                          className={cn(
+                            "justify-start text-left h-auto py-2",
+                            hasBeenAnswered && isCorrect && "border-green-500 bg-green-500/10 text-green-700 hover:bg-green-500/20",
+                            hasBeenAnswered && !isCorrect && isSelected && "border-red-500 bg-red-500/10 text-red-700 hover:bg-red-500/20",
+                            "disabled:opacity-100 disabled:cursor-not-allowed"
+                          )}
+                        >
+                          {option}
+                          {hasBeenAnswered && isCorrect && <CheckCircle2 className="ml-auto h-5 w-5 text-green-500" />}
+                          {hasBeenAnswered && !isCorrect && isSelected && <XCircle className="ml-auto h-5 w-5 text-red-500" />}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                !isLoadingMcq && (
+                  <div className="flex flex-col items-center justify-center text-center p-4 bg-secondary/30 rounded-md">
+                      <Lightbulb className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Enter a topic below and click "Generate" to start a quiz!</p>
+                  </div>
+                )
+              )}
             </CardContent>
-            <CardFooter>
-                <Button disabled>Generate New MCQ (Coming Soon)</Button>
+            <CardFooter className="flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <Input 
+                type="text"
+                placeholder="e.g., Solar System, World War II"
+                value={mcqTopic}
+                onChange={(e) => setMcqTopic(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerateMcq()}
+                disabled={isLoadingMcq}
+                className="flex-grow"
+              />
+              <Button onClick={handleGenerateMcq} disabled={isLoadingMcq} className="w-full sm:w-auto">
+                {isLoadingMcq ? 'Generating...' : 'Generate New MCQ'}
+              </Button>
             </CardFooter>
           </Card>
 
@@ -357,4 +461,3 @@ export default function ProgressPage() {
     </AppShell>
   );
 }
-
