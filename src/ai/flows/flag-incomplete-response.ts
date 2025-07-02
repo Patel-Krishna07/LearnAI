@@ -33,6 +33,7 @@ const prompt = ai.definePrompt({
   name: 'flagIncompleteResponsePrompt',
   input: {schema: FlagIncompleteResponseInputSchema},
   output: {schema: FlagIncompleteResponseOutputSchema},
+  model: 'googleai/gemini-pro',
   prompt: `You are an AI assistant that helps process student feedback on AI responses.
 
 A student has flagged a response as incomplete or inaccurate. The following information is provided:
