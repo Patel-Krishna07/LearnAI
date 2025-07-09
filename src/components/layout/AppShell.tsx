@@ -14,7 +14,7 @@ export function AppShell({ children }: AppShellProps) {
         {children}
       </main>
       <footer className="py-6 text-center text-sm text-muted-foreground border-t">
-        © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+        Fueling curiosity, one question at a time.
       </footer>
     </div>
   );
