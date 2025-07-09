@@ -52,7 +52,26 @@ const generatePracticeExercisesFlow = ai.defineFlow(
     outputSchema: GeneratePracticeExercisesOutputSchema,
   },
   async input => {
-    const {output} = await generatePracticeExercisesPrompt(input);
-    return output!;
+    const maxRetries = 3;
+    const delayMs = 1000;
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const {output} = await generatePracticeExercisesPrompt(input);
+        return output!;
+      } catch (e: any) {
+        lastError = e;
+        if (attempt < maxRetries && (e.message?.includes('503') || e.message?.includes('overloaded'))) {
+          console.log(`Attempt ${attempt} failed due to service overload. Retrying in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        } else {
+          // This is the last attempt or a non-retryable error
+          throw e;
+        }
+      }
+    }
+    // Fallback throw, should not be reached due to logic inside catch
+    throw lastError;
   }
 );

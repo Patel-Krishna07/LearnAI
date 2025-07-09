@@ -54,15 +54,28 @@ const flagIncompleteResponseFlow = ai.defineFlow(
     outputSchema: FlagIncompleteResponseOutputSchema,
   },
   async input => {
-    // In a real application, you would likely want to:
-    // 1. Store the feedback in a database.
-    // 2. Notify administrators of the flagged response.
-    // 3. Potentially trigger a review process.
+    const maxRetries = 3;
+    const delayMs = 1000;
+    let lastError: any;
 
-    // For this example, we'll just simulate a successful flagging.
-    const {output} = await prompt({
-      ...input,
-    });
-    return output!;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const {output} = await prompt({
+          ...input,
+        });
+        return output!;
+      } catch (e: any) {
+        lastError = e;
+        if (attempt < maxRetries && (e.message?.includes('503') || e.message?.includes('overloaded'))) {
+          console.log(`Attempt ${attempt} failed due to service overload. Retrying in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        } else {
+          // This is the last attempt or a non-retryable error
+          throw e;
+        }
+      }
+    }
+    // Fallback throw, should not be reached due to logic inside catch
+    throw lastError;
   }
 );

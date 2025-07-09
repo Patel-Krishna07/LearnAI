@@ -25,23 +25,38 @@ export const generateImageFromTextTool = ai.defineTool(
     outputSchema: GenerateImageToolOutputSchema,
   },
   async (input) => {
-    try {
-      const {media, text} = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-preview-image-generation', // Specific model for image generation
-        prompt: input.prompt,
-        config: {
-          responseModalities: ['TEXT', 'IMAGE'], // Must provide both
-        },
-      });
+    const maxRetries = 3;
+    const delayMs = 2000;
+    let lastError: any;
 
-      if (media && media.url) {
-        return { imageDataUri: media.url };
-      } else {
-        return { error: text || 'Image generation did not return an image or a specific error message.' };
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const {media, text} = await ai.generate({
+          model: 'googleai/gemini-2.0-flash-preview-image-generation', // Specific model for image generation
+          prompt: input.prompt,
+          config: {
+            responseModalities: ['TEXT', 'IMAGE'], // Must provide both
+          },
+        });
+
+        if (media && media.url) {
+          return { imageDataUri: media.url };
+        } else {
+          return { error: text || 'Image generation did not return an image or a specific error message.' };
+        }
+      } catch (e: any) {
+        lastError = e;
+        if (attempt < maxRetries && (e.message?.includes('503') || e.message?.includes('overloaded'))) {
+          console.log(`Image generation attempt ${attempt} failed. Retrying in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        } else {
+          // Non-retryable error or last attempt failed
+          console.error("Error in generateImageFromTextTool:", e);
+          return { error: e.message || 'Failed to generate image due to an unexpected error.' };
+        }
       }
-    } catch (e: any) {
-      console.error("Error in generateImageFromTextTool:", e);
-      return { error: e.message || 'Failed to generate image due to an unexpected error.' };
     }
+    // This part is for fallback in case loop exits unexpectedly
+    return { error: lastError?.message || 'Failed to generate image after multiple retries.' };
   }
 );
