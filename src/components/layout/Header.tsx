@@ -57,7 +57,7 @@ export function Header() {
         
         <nav className="hidden md:flex flex-1 items-center space-x-6 text-sm font-medium">
           {MAIN_NAV_LINKS.map((link) => (
-             (isAuthenticated || (link.href !== '/progress' && link.href !== '/study-guide' && link.href !== '/practice' && link.href !== '/chat')) && // Show all links if authenticated, else limited links
+             (isAuthenticated || (link.href !== '/progress' && link.href !== '/study-guide' && link.href !== '/practice' && link.href !== '/chat' && link.href !== '/quiz')) && // Show all links if authenticated, else limited links
             <Link
               key={link.label}
               href={link.href}
@@ -143,7 +143,7 @@ export function Header() {
               </Link>
               <div className="flex flex-col space-y-3">
                 {MAIN_NAV_LINKS.map((link) => (
-                   (isAuthenticated || (link.href !== '/progress' && link.href !== '/study-guide' && link.href !== '/practice' && link.href !== '/chat')) &&
+                   (isAuthenticated || (link.href !== '/progress' && link.href !== '/study-guide' && link.href !== '/practice' && link.href !== '/chat' && link.href !== '/quiz')) &&
                   <Link
                     key={link.label}
                     href={link.href}
