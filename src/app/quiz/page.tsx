@@ -226,21 +226,29 @@ type QuizState = {
     answeredQuestions: number;
 };
 
+type QuizType = 'mcq' | 'trueFalse' | 'fillBlank' | 'matching';
+
+type QuizDataState = {
+    mcq: { topic: string; questions: McqQuestion[] };
+    trueFalse: { topic: string; questions: TrueFalseQuestion[] };
+    fillBlank: { topic: string; questions: FillBlankQuestion[] };
+    matching: { topic: string; pairs: GenerateMatchingPairsOutput | null };
+};
+
 export default function QuizPage() {
     const { isAuthenticated, loading: authLoading, addPoints, addMysteryBox } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     
-    // State for each quiz type
-    const [mcqs, setMcqs] = useState<McqQuestion[] | null>(null);
-    const [trueFalses, setTrueFalses] = useState<TrueFalseQuestion[] | null>(null);
-    const [fillBlanks, setFillBlanks] = useState<FillBlankQuestion[] | null>(null);
-    const [matchingPairs, setMatchingPairs] = useState<GenerateMatchingPairsOutput | null>(null);
+    const [quizData, setQuizData] = useState<QuizDataState>({
+        mcq: { topic: '', questions: [] },
+        trueFalse: { topic: '', questions: [] },
+        fillBlank: { topic: '', questions: [] },
+        matching: { topic: '', pairs: null },
+    });
 
     const [quizState, setQuizState] = useState<QuizState>({ totalQuestions: 0, correctAnswers: 0, answeredQuestions: 0 });
-
     const [loading, setLoading] = useState({ mcq: false, trueFalse: false, fillBlank: false, matching: false });
-    const [currentTopic, setCurrentTopic] = useState({ mcq: '', trueFalse: '', fillBlank: '', matching: '' });
 
     // Forms
     const mcqForm = useForm<QuizTopicFormData>({ resolver: zodResolver(QuizTopicSchema), defaultValues: { topic: '', numQuestions: 3 } });
@@ -264,11 +272,15 @@ export default function QuizPage() {
 
     const checkQuizCompletion = useCallback((newState: QuizState) => {
         if (newState.totalQuestions > 0 && newState.answeredQuestions === newState.totalQuestions) {
+            toast({
+                title: 'Quiz Complete!',
+                description: `You scored ${newState.correctAnswers} out of ${newState.totalQuestions}.`
+            });
             if (newState.correctAnswers === newState.totalQuestions) {
                 toast({ title: "Perfect Score!", description: "Incredible! You've earned a special reward." });
                 awardMysteryBox();
             } else {
-                if (Math.random() < 0.1) {
+                if (Math.random() < 0.1) { // 10% chance
                     awardMysteryBox();
                 }
             }
@@ -276,7 +288,9 @@ export default function QuizPage() {
     }, [awardMysteryBox, toast]);
 
     const resetQuizState = (totalQuestions: number) => {
-        setQuizState({ totalQuestions, correctAnswers: 0, answeredQuestions: 0 });
+        const newState = { totalQuestions, correctAnswers: 0, answeredQuestions: 0 };
+        setQuizState(newState);
+        return newState;
     };
 
     const handleCorrectAnswer = (points: number) => {
@@ -296,44 +310,40 @@ export default function QuizPage() {
     };
 
 
-    const handleGenerate = async (type: keyof typeof loading, data: QuizTopicFormData | MatchingTopicFormData) => {
+    const handleGenerate = async (type: QuizType, data: QuizTopicFormData | MatchingTopicFormData) => {
         setLoading(prev => ({ ...prev, [type]: true }));
-        setCurrentTopic(prev => ({ ...prev, [type]: data.topic }));
-
-        if (type === 'mcq') setMcqs(null);
-        if (type === 'trueFalse') setTrueFalses(null);
-        if (type === 'fillBlank') setFillBlanks(null);
-        if (type === 'matching') setMatchingPairs(null);
         
-        let numQuestions = 0;
-        if ('numQuestions' in data) numQuestions = data.numQuestions;
-        if ('numPairs' in data) numQuestions = data.numPairs;
-        resetQuizState(numQuestions);
+        // Clear previous questions for the specific type
+        setQuizData(prev => ({ ...prev, [type]: { topic: data.topic, questions: [], pairs: null } as any }));
 
         try {
-            let result;
+            let numQuestions = 0;
+            if ('numQuestions' in data) numQuestions = data.numQuestions;
+            if ('numPairs' in data) numQuestions = data.numPairs;
+            resetQuizState(numQuestions);
+
             if (type === 'mcq' && 'numQuestions' in data) {
-                 result = await generateMcqs({ topic: data.topic, numQuestions: data.numQuestions });
+                 const result = await generateMcqs({ topic: data.topic, numQuestions: data.numQuestions });
                  if (result?.questions) {
-                     setMcqs(result.questions);
-                     resetQuizState(result.questions.length);
+                    setQuizData(prev => ({ ...prev, mcq: { topic: data.topic, questions: result.questions } }));
+                    resetQuizState(result.questions.length);
                  }
             } else if (type === 'trueFalse' && 'numQuestions' in data) {
-                result = await generateTrueFalses({ topic: data.topic, numQuestions: data.numQuestions });
+                const result = await generateTrueFalses({ topic: data.topic, numQuestions: data.numQuestions });
                 if (result?.questions) {
-                    setTrueFalses(result.questions);
+                    setQuizData(prev => ({ ...prev, trueFalse: { topic: data.topic, questions: result.questions } }));
                     resetQuizState(result.questions.length);
                 }
             } else if (type === 'fillBlank' && 'numQuestions' in data) {
-                 result = await generateFillBlanks({ topic: data.topic, numQuestions: data.numQuestions });
+                 const result = await generateFillBlanks({ topic: data.topic, numQuestions: data.numQuestions });
                  if (result?.questions) {
-                     setFillBlanks(result.questions);
-                     resetQuizState(result.questions.length);
+                    setQuizData(prev => ({ ...prev, fillBlank: { topic: data.topic, questions: result.questions } }));
+                    resetQuizState(result.questions.length);
                  }
             } else if (type === 'matching' && 'numPairs' in data) {
-                result = await generateMatchingPairs({ topic: data.topic, numPairs: data.numPairs });
-                if (result) {
-                    setMatchingPairs(result);
+                const result = await generateMatchingPairs({ topic: data.topic, numPairs: data.numPairs });
+                if (result?.pairs) {
+                    setQuizData(prev => ({ ...prev, matching: { topic: data.topic, pairs: result } }));
                     resetQuizState(result.pairs.length);
                 }
             }
@@ -350,8 +360,8 @@ export default function QuizPage() {
     }
 
     const renderQuizContent = (
-        type: keyof typeof loading,
-        questions: any[] | null,
+        type: QuizType,
+        questions: any[] | null | undefined,
         Component: React.ElementType,
         topic: string,
         numQuestions: number,
@@ -412,7 +422,7 @@ export default function QuizPage() {
                                 </form></Form>
                             </CardContent>
                         </Card>
-                        {renderQuizContent('mcq', mcqs, McqComponent, currentTopic.mcq, mcqForm.getValues('numQuestions'), POINTS_PER_MCQ_CORRECT)}
+                        {renderQuizContent('mcq', quizData.mcq.questions, McqComponent, quizData.mcq.topic, mcqForm.getValues('numQuestions'), POINTS_PER_MCQ_CORRECT)}
                     </TabsContent>
 
                     {/* True/False Tab */}
@@ -426,7 +436,7 @@ export default function QuizPage() {
                                 </form></Form>
                             </CardContent>
                         </Card>
-                        {renderQuizContent('trueFalse', trueFalses, TrueFalseComponent, currentTopic.trueFalse, trueFalseForm.getValues('numQuestions'), POINTS_PER_TRUE_FALSE_CORRECT)}
+                        {renderQuizContent('trueFalse', quizData.trueFalse.questions, TrueFalseComponent, quizData.trueFalse.topic, trueFalseForm.getValues('numQuestions'), POINTS_PER_TRUE_FALSE_CORRECT)}
                     </TabsContent>
 
                     {/* Fill the Blank Tab */}
@@ -440,7 +450,7 @@ export default function QuizPage() {
                                 </form></Form>
                             </CardContent>
                         </Card>
-                         {renderQuizContent('fillBlank', fillBlanks, FillBlankComponent, currentTopic.fillBlank, fillBlankForm.getValues('numQuestions'), POINTS_PER_FILL_BLANK_CORRECT)}
+                         {renderQuizContent('fillBlank', quizData.fillBlank.questions, FillBlankComponent, quizData.fillBlank.topic, fillBlankForm.getValues('numQuestions'), POINTS_PER_FILL_BLANK_CORRECT)}
                     </TabsContent>
 
                      {/* Matching Pairs Tab */}
@@ -455,7 +465,7 @@ export default function QuizPage() {
                             </CardContent>
                         </Card>
                         {loading.matching && <Skeleton className="h-64 w-full mt-6" />}
-                        {matchingPairs && <MatchingPairsComponent pairs={matchingPairs.pairs} onCorrect={(points) => addPoints(points)} onAnswered={(isCorrect) => handleQuestionAnswered(isCorrect)} />}
+                        {quizData.matching.pairs && <MatchingPairsComponent pairs={quizData.matching.pairs.pairs} onCorrect={(points) => addPoints(points)} onAnswered={(isCorrect) => handleQuestionAnswered(isCorrect)} />}
                     </TabsContent>
 
                 </Tabs>
