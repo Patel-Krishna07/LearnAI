@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, LogOut, UserCircle, NotebookText, Feather, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +27,7 @@ import {
 export function Header() {
   const { isAuthenticated, user, logout, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = () => {
     logout();
@@ -61,7 +63,10 @@ export function Header() {
             <Link
               key={link.label}
               href={link.href}
-              className="transition-colors hover:text-accent text-foreground/80"
+              className={cn(
+                "transition-colors hover:text-accent",
+                pathname === link.href ? "text-accent font-semibold" : "text-foreground/80"
+              )}
             >
               {link.label}
             </Link>
@@ -147,7 +152,10 @@ export function Header() {
                   <Link
                     key={link.label}
                     href={link.href}
-                    className="transition-colors hover:text-accent text-lg py-2"
+                    className={cn(
+                      "transition-colors hover:text-accent text-lg py-2",
+                      pathname === link.href ? "text-accent font-semibold" : "text-foreground"
+                    )}
                   >
                     {link.label}
                   </Link>
