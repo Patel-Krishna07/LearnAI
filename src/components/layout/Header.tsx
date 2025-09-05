@@ -76,11 +76,11 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end space-x-2 sm:space-x-4">
           {isAuthenticated && user && (
              <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-1 sm:gap-2 px-2 py-1 h-auto rounded-md bg-accent/10 text-accent text-xs sm:text-sm font-medium cursor-default hover:bg-accent/20">
+              <TooltipTrigger>
+                <div className="flex items-center gap-1 sm:gap-2 px-2 py-1 h-auto rounded-md bg-accent/10 text-accent text-xs sm:text-sm font-medium cursor-default">
                   <Star className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>{user.points} pts</span>
-                </Button>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Your current points</p>
