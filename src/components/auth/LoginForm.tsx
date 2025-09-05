@@ -13,6 +13,9 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { User } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
+import { Eye, EyeOff } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 // Define a type for stored users that includes the password
 interface StoredRegisteredUser extends User {
@@ -32,6 +35,7 @@ export function LoginForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(LoginSchema),
@@ -111,9 +115,27 @@ export function LoginForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
-              </FormControl>
+              <div className="relative">
+                <FormControl>
+                  <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" {...field} />
+                </FormControl>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{showPassword ? 'Hide password' : 'Show password'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <FormMessage />
             </FormItem>
           )}
