@@ -32,20 +32,21 @@ import { generateMatchingPairs, type GenerateMatchingPairsOutput } from '@/ai/fl
 
 // --- Interactive Question Components ---
 
-const McqComponent = ({ question, onCorrect, onAnswered, questionNumber }: { question: McqQuestion, onCorrect: () => void, onAnswered: () => void, questionNumber: number }) => {
+const McqComponent = ({ question, onCorrect, onAnswered, questionNumber }: { question: McqQuestion, onCorrect: () => void, onAnswered: (isCorrect: boolean) => void, questionNumber: number }) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const { toast } = useToast();
 
   const handleSelect = (index: number) => {
     if (selectedIndex !== null) return;
     setSelectedIndex(index);
-    if (index === question.correctAnswerIndex) {
+    const isCorrect = index === question.correctAnswerIndex;
+    if (isCorrect) {
       onCorrect();
       toast({ title: 'Correct!', description: `+${POINTS_PER_MCQ_CORRECT} XP!` });
     } else {
       toast({ title: 'Not quite!', variant: 'destructive' });
     }
-    onAnswered(); // Notify parent that a question has been answered
+    onAnswered(isCorrect);
   };
 
   return (
@@ -72,20 +73,21 @@ const McqComponent = ({ question, onCorrect, onAnswered, questionNumber }: { que
   );
 };
 
-const TrueFalseComponent = ({ question, onCorrect, onAnswered, questionNumber }: { question: TrueFalseQuestion, onCorrect: () => void, onAnswered: () => void, questionNumber: number }) => {
+const TrueFalseComponent = ({ question, onCorrect, onAnswered, questionNumber }: { question: TrueFalseQuestion, onCorrect: () => void, onAnswered: (isCorrect: boolean) => void, questionNumber: number }) => {
   const [selected, setSelected] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   const handleSelect = (answer: boolean) => {
     if (selected !== null) return;
     setSelected(answer);
-    if (answer === question.isTrue) {
+    const isCorrect = answer === question.isTrue;
+    if (isCorrect) {
       onCorrect();
       toast({ title: 'Correct!', description: `+${POINTS_PER_TRUE_FALSE_CORRECT} XP!` });
     } else {
       toast({ title: 'Incorrect!', variant: 'destructive' });
     }
-    onAnswered();
+    onAnswered(isCorrect);
   };
 
   return (
@@ -105,7 +107,7 @@ const TrueFalseComponent = ({ question, onCorrect, onAnswered, questionNumber }:
   );
 };
 
-const FillBlankComponent = ({ question, onCorrect, onAnswered, questionNumber }: { question: FillBlankQuestion, onCorrect: () => void, onAnswered: () => void, questionNumber: number }) => {
+const FillBlankComponent = ({ question, onCorrect, onAnswered, questionNumber }: { question: FillBlankQuestion, onCorrect: () => void, onAnswered: (isCorrect: boolean) => void, questionNumber: number }) => {
   const [answer, setAnswer] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
@@ -113,13 +115,14 @@ const FillBlankComponent = ({ question, onCorrect, onAnswered, questionNumber }:
   const handleCheck = () => {
     if (submitted) return;
     setSubmitted(true);
-    if (answer.trim().toLowerCase() === question.answer.toLowerCase()) {
+    const isCorrect = answer.trim().toLowerCase() === question.answer.toLowerCase();
+    if (isCorrect) {
       onCorrect();
       toast({ title: 'Correct!', description: `+${POINTS_PER_FILL_BLANK_CORRECT} XP!` });
     } else {
       toast({ title: 'Not quite!', description: `Correct answer: ${question.answer}`, variant: 'destructive' });
     }
-    onAnswered();
+    onAnswered(isCorrect);
   };
   const parts = question.question.split('[BLANK]');
   return (
@@ -161,21 +164,21 @@ const MatchingPairsComponent = ({ pairs, onCorrect, onAnswered }: { pairs: Gener
     const handleDefClick = (def: string, index: number) => {
         if (!selectedTerm || matchedPairs.includes(selectedTerm.id)) return;
 
-        if (pairs[selectedTerm.id].definition === def) {
+        const isCorrect = pairs[selectedTerm.id].definition === def;
+        if (isCorrect) {
             const newMatchedPairs = [...matchedPairs, selectedTerm.id];
             setMatchedPairs(newMatchedPairs);
             toast({ title: 'Match Found!', description: `Great job! +${POINTS_PER_MATCHING_CORRECT} XP!` });
             onCorrect(POINTS_PER_MATCHING_CORRECT);
-            onAnswered(true); // A correct match is an "answer"
 
             if (newMatchedPairs.length === pairs.length) {
                 toast({ title: 'Challenge Complete!', description: `You matched all pairs!` });
             }
         } else {
             toast({ title: 'Not a match!', description: 'Try again.', variant: 'destructive' });
-            onAnswered(false); // An incorrect match is also an "answer"
         }
         setSelectedTerm(null);
+        onAnswered(isCorrect);
     };
 
     return (
@@ -258,11 +261,10 @@ export default function QuizPage() {
         });
     }, [addMysteryBox, toast]);
 
-    // Effect to check for quiz completion and awards
-    useEffect(() => {
-        if (quizState.totalQuestions > 0 && quizState.answeredQuestions === quizState.totalQuestions) {
+    const checkQuizCompletion = (newState: QuizState) => {
+        if (newState.totalQuestions > 0 && newState.answeredQuestions === newState.totalQuestions) {
             // All questions answered, check for perfect score
-            if (quizState.correctAnswers === quizState.totalQuestions) {
+            if (newState.correctAnswers === newState.totalQuestions) {
                 toast({ title: "Perfect Score!", description: "Incredible! You've earned a special reward." });
                 awardMysteryBox();
             } else {
@@ -272,8 +274,7 @@ export default function QuizPage() {
                 }
             }
         }
-    }, [quizState, toast, awardMysteryBox]);
-
+    };
 
     const resetQuizState = (totalQuestions: number) => {
         setQuizState({ totalQuestions, correctAnswers: 0, answeredQuestions: 0 });
@@ -281,19 +282,19 @@ export default function QuizPage() {
 
     const handleCorrectAnswer = (points: number) => {
         addPoints(points);
-        setQuizState(prev => ({ ...prev, correctAnswers: prev.correctAnswers + 1 }));
+        // Correct answer count is now managed in handleQuestionAnswered
     };
 
-    const handleQuestionAnswered = (isCorrect?: boolean) => {
-         // For matching, where we get a boolean, we only increment correct answers if it was a match
-        if (typeof isCorrect === 'boolean' && isCorrect) {
-             setQuizState(prev => ({...prev, correctAnswers: prev.correctAnswers + 1, answeredQuestions: prev.answeredQuestions + 1}));
-        } else if (typeof isCorrect === 'undefined') {
-            // For other quiz types, correctness is handled in handleCorrectAnswer
-            setQuizState(prev => ({ ...prev, answeredQuestions: prev.answeredQuestions + 1 }));
-        } else {
-             setQuizState(prev => ({ ...prev, answeredQuestions: prev.answeredQuestions + 1 }));
+    const handleQuestionAnswered = (isCorrect: boolean) => {
+        const newState = { ...quizState };
+        newState.answeredQuestions++;
+        if (isCorrect) {
+            newState.correctAnswers++;
         }
+        setQuizState(newState);
+        // We pass the new state directly to the completion check function
+        // because setState is async and quizState might not be updated yet.
+        checkQuizCompletion(newState);
     };
 
 
@@ -309,23 +310,35 @@ export default function QuizPage() {
         
         let numQuestions = 0;
         if ('numQuestions' in data) numQuestions = data.numQuestions;
-        if ('numPairs' in data) numQuestions = data.numPairs; // For matching, each pair is a "question"
+        if ('numPairs' in data) numQuestions = data.numPairs;
         resetQuizState(numQuestions);
 
         try {
             let result;
             if (type === 'mcq' && 'numQuestions' in data) {
                  result = await generateMcqs({ topic: data.topic, numQuestions: data.numQuestions });
-                 if (result?.questions) setMcqs(result.questions);
+                 if (result?.questions) {
+                     setMcqs(result.questions);
+                     resetQuizState(result.questions.length);
+                 }
             } else if (type === 'trueFalse' && 'numQuestions' in data) {
                 result = await generateTrueFalses({ topic: data.topic, numQuestions: data.numQuestions });
-                if (result?.questions) setTrueFalses(result.questions);
+                if (result?.questions) {
+                    setTrueFalses(result.questions);
+                    resetQuizState(result.questions.length);
+                }
             } else if (type === 'fillBlank' && 'numQuestions' in data) {
                  result = await generateFillBlanks({ topic: data.topic, numQuestions: data.numQuestions });
-                 if (result?.questions) setFillBlanks(result.questions);
+                 if (result?.questions) {
+                     setFillBlanks(result.questions);
+                     resetQuizState(result.questions.length);
+                 }
             } else if (type === 'matching' && 'numPairs' in data) {
                 result = await generateMatchingPairs({ topic: data.topic, numPairs: data.numPairs });
-                if (result) setMatchingPairs(result);
+                if (result) {
+                    setMatchingPairs(result);
+                    resetQuizState(result.pairs.length);
+                }
             }
         } catch (error) {
             console.error(`Error generating ${type}:`, error);
@@ -363,7 +376,7 @@ export default function QuizPage() {
                             key={index} 
                             question={q} 
                             onCorrect={() => handleCorrectAnswer(pointsPerCorrect)} 
-                            onAnswered={() => handleQuestionAnswered()}
+                            onAnswered={(isCorrect: boolean) => handleQuestionAnswered(isCorrect)}
                             questionNumber={index + 1} 
                         />
                     ))}
