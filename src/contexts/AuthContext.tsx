@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { User, LeaderboardUser, MysteryBox } from '@/lib/types';
+import type { User, LeaderboardUser, MysteryBox, MysteryBoxReward, MysteryBoxTier } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { auth } from '@/lib/firebase/config';
@@ -16,7 +16,7 @@ interface AuthContextType {
   loading: boolean;
   addPoints: (pointsToAdd: number) => void;
   addMysteryBox: (box: MysteryBox) => void;
-  openMysteryBox: () => MysteryBox | undefined;
+  openMysteryBox: () => MysteryBoxReward | undefined;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            // This case can happen if user signed up with Google but local storage was cleared
            // We'll create a local record for them.
            const initialPoints = 0;
-           const initialBadges = getInitialBadges(initialPoints);
+           const initialBadges = getEarnedBadges(initialPoints);
            const newUser: User = {
              id: firebaseUser.uid,
              email: firebaseUser.email,
@@ -193,17 +193,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     updateUserInLocalStorage(updatedUser);
   };
 
-  const openMysteryBox = (): MysteryBox | undefined => {
+  const openMysteryBox = (): MysteryBoxReward | undefined => {
       if (!user || !user.mysteryBoxes || user.mysteryBoxes.length === 0) {
         return undefined;
       }
-      const [openedBox, ...remainingBoxes] = user.mysteryBoxes;
-      const updatedUser: User = {
-          ...user,
-          mysteryBoxes: remainingBoxes,
+      // Reward definitions
+      const rewards: Record<MysteryBoxTier, { description: string, action: () => void }[]> = {
+          Common: [
+              { description: '+20 XP', action: () => addPoints(20) },
+              { description: 'A fun fact!', action: () => {} }, // No action, just a message
+              { description: 'A small hint token', action: () => {} }, // Placeholder
+          ],
+          Rare: [
+              { description: '+50 XP', action: () => addPoints(50) },
+              { description: 'A new badge!', action: () => {} }, // Placeholder
+              { description: 'A study flashcard!', action: () => {} }, // Placeholder
+          ],
+          Epic: [
+              { description: '+100 XP', action: () => addPoints(100) },
+              { description: 'Avatar customization item!', action: () => {} }, // Placeholder
+              { description: 'Double XP booster (1 hr)!', action: () => {} }, // Placeholder
+          ],
+          Legendary: [
+              { description: '+200 XP', action: () => addPoints(200) },
+              { description: 'An exclusive title/badge!', action: () => {} }, // Placeholder
+              { description: 'A leaderboard jump!', action: () => {} }, // Placeholder
+          ],
       };
-      updateUserInLocalStorage(updatedUser);
-      return openedBox;
+
+      const [openedBox, ...remainingBoxes] = user.mysteryBoxes;
+
+      const possibleRewards = rewards[openedBox.tier];
+      const selectedReward = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
+      
+      // Perform the reward's action (e.g., add points)
+      selectedReward.action();
+
+      // Update the user state *after* the action has modified it (e.g., points have been added)
+      // We need to re-fetch the user from state to ensure we have the latest data before saving
+      setUser(currentUser => {
+          const userAfterReward: User = {
+              ...(currentUser!),
+              mysteryBoxes: remainingBoxes,
+          };
+          updateUserInLocalStorage(userAfterReward);
+          return userAfterReward;
+      });
+
+      return {
+        tier: openedBox.tier,
+        description: selectedReward.description,
+      };
   };
   
   const isAuthenticated = !!user;
@@ -222,3 +262,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+    

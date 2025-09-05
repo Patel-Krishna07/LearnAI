@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Award, BarChart3, Brain, Compass, Diamond, GraduationCap, ShieldCheck, Sparkles, Star, Trophy, Zap, Gift, TrendingUp } from 'lucide-react';
-import type { User, LeaderboardUser, BadgeDefinition as BadgeDefinitionType, MysteryBox as MysteryBoxType } from '@/lib/types';
+import type { User, LeaderboardUser, BadgeDefinition as BadgeDefinitionType, MysteryBox as MysteryBoxType, MysteryBoxReward } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { LucideIcon } from 'lucide-react';
@@ -62,13 +62,18 @@ export default function ProgressPage() {
   }, [isAuthenticated, user]);
 
   const handleOpenBox = () => {
-    const openedBox = openMysteryBox();
-    if (openedBox) {
-        // In a real app, you'd show a modal with the reward details
+    const reward = openMysteryBox(); // This function now returns the reward
+    if (reward) {
         toast({
-            title: `You opened a ${openedBox.tier} Mystery Box!`,
-            description: `You received a reward! (Full reward details coming soon).`,
+            title: `You opened a ${reward.tier} Mystery Box!`,
+            description: `You received: ${reward.description}`,
         });
+    } else {
+        toast({
+            title: "No more boxes!",
+            description: "You don't have any Mystery Boxes to open right now.",
+            variant: "destructive"
+        })
     }
   };
 
@@ -80,7 +85,11 @@ export default function ProgressPage() {
     return <AppShell><div className="flex items-center justify-center h-[calc(100vh-150px)]"><p className="text-xl text-muted-foreground">Please log in to view your progress.</p></div></AppShell>;
   }
 
-  const userBadgesWithDetails: BadgeDefinitionType[] = BADGE_DEFINITIONS.filter(def => user.badges.includes(def.name)).map(def => ({ ...def, icon: badgeIcons[def.name] || ShieldCheck }));
+  const userBadgesWithDetails: BadgeDefinitionType[] = (user.badges || []).map(badgeName => {
+    const def = BADGE_DEFINITIONS.find(b => b.name === badgeName);
+    return { ...def, name: badgeName, icon: badgeIcons[badgeName] || ShieldCheck } as BadgeDefinitionType;
+  }).filter(b => b.pointsThreshold !== undefined);
+  
   const unopenedBoxes = user.mysteryBoxes || [];
 
   return (
@@ -105,3 +114,5 @@ export default function ProgressPage() {
     </AppShell>
   );
 }
+
+    

@@ -29,7 +29,7 @@ export interface ChatMessage {
 }
 
 export interface StudyGuideEntry {
-  id: string;
+  id:string;
   question: string; // User's original question text
   content: string;   // The AI-generated study guide entry (combined)
   createdAt: Date;
@@ -49,3 +49,10 @@ export interface LeaderboardUser {
   badges: string[];
   mysteryBoxes: MysteryBox[];
 }
+
+export interface MysteryBoxReward {
+  tier: MysteryBoxTier;
+  description: string;
+}
+
+    
