@@ -77,10 +77,10 @@ export function Header() {
           {isAuthenticated && user && (
              <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 sm:gap-2 px-2 py-1 rounded-md bg-accent/10 text-accent text-xs sm:text-sm font-medium cursor-default">
+                <Button variant="ghost" className="flex items-center gap-1 sm:gap-2 px-2 py-1 h-auto rounded-md bg-accent/10 text-accent text-xs sm:text-sm font-medium cursor-default hover:bg-accent/20">
                   <Star className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>{user.points} pts</span>
-                </div>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Your current points</p>
