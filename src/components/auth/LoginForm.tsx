@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import type { User } from '@/lib/types';
+import type { User, MysteryBox } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import { Eye, EyeOff } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -58,6 +58,8 @@ export function LoginForm() {
       if (foundUser && foundUser.password === data.password) {
         const points = typeof foundUser.points === 'number' ? foundUser.points : 0;
         const badges = Array.isArray(foundUser.badges) ? foundUser.badges : getInitialBadges(points);
+        const mysteryBoxes = Array.isArray(foundUser.mysteryBoxes) ? foundUser.mysteryBoxes : [];
+
 
         const userToLogin: User = {
           id: foundUser.id,
@@ -66,6 +68,7 @@ export function LoginForm() {
           image: foundUser.image, 
           points: points,
           badges: badges,
+          mysteryBoxes: mysteryBoxes,
         };
         login(userToLogin); // AuthContext login will handle setting its own state
         toast({ title: 'Login Successful', description: 'Welcome back!' });

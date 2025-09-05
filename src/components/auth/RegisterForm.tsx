@@ -75,6 +75,7 @@ export function RegisterForm() {
         password: data.password, 
         points: initialPoints,
         badges: initialBadges,
+        mysteryBoxes: [],
       };
 
       existingRegisteredUsers.push(newUserForRegistration);
@@ -89,6 +90,7 @@ export function RegisterForm() {
         name: newUserForRegistration.name || "Anonymous",
         points: initialPoints,
         badges: initialBadges,
+        mysteryBoxes: [],
       };
       existingLeaderboardUsers.push(newUserForLeaderboard);
       localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(existingLeaderboardUsers));

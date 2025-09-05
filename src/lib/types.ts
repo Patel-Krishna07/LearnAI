@@ -1,4 +1,13 @@
 
+
+export type MysteryBoxTier = 'Common' | 'Rare' | 'Epic' | 'Legendary';
+
+export interface MysteryBox {
+  id: string;
+  tier: MysteryBoxTier;
+  collectedAt: Date;
+}
+
 export interface User {
   id: string;
   name?: string | null;
@@ -6,6 +15,7 @@ export interface User {
   image?: string | null; // For profile picture
   points: number;
   badges: string[]; // Names of earned badges
+  mysteryBoxes: MysteryBox[];
 }
 
 export interface ChatMessage {
@@ -37,4 +47,5 @@ export interface LeaderboardUser {
   name: string;
   points: number;
   badges: string[];
+  mysteryBoxes: MysteryBox[];
 }

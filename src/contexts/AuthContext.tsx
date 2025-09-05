@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { User, LeaderboardUser } from '@/lib/types';
+import type { User, LeaderboardUser, MysteryBox } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { auth } from '@/lib/firebase/config';
@@ -15,6 +15,8 @@ interface AuthContextType {
   logout: () => void;
   loading: boolean;
   addPoints: (pointsToAdd: number) => void;
+  addMysteryBox: (box: MysteryBox) => void;
+  openMysteryBox: () => MysteryBox | undefined;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +37,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const updateUserInLocalStorage = (updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem(LEARN_AI_USER_KEY, JSON.stringify(updatedUser));
+
+    // Update leaderboard storage as well
+     try {
+      const leaderboardUsersJson = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
+      let leaderboardUsers: LeaderboardUser[] = leaderboardUsersJson ? JSON.parse(leaderboardUsersJson) : [];
+      
+      const userIndexInLeaderboard = leaderboardUsers.findIndex(u => u.id === updatedUser.id);
+      if (userIndexInLeaderboard !== -1) {
+        leaderboardUsers[userIndexInLeaderboard].points = updatedUser.points;
+        leaderboardUsers[userIndexInLeaderboard].badges = updatedUser.badges;
+        leaderboardUsers[userIndexInLeaderboard].mysteryBoxes = updatedUser.mysteryBoxes;
+      } else {
+         leaderboardUsers.push({
+          id: updatedUser.id,
+          name: updatedUser.name || "Anonymous",
+          points: updatedUser.points,
+          badges: updatedUser.badges,
+          mysteryBoxes: updatedUser.mysteryBoxes,
+        });
+      }
+      localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(leaderboardUsers));
+    } catch (e) {
+      console.error("Failed to update leaderboard:", e);
+    }
+  };
+
   useEffect(() => {
     // If Firebase is not configured, auth will be null. Fallback to local-only check.
     if (!auth) {
@@ -44,6 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               const storedUser = JSON.parse(storedUserJson) as User;
                 if (typeof storedUser.points !== 'number') storedUser.points = 0;
                 if (!Array.isArray(storedUser.badges)) storedUser.badges = getEarnedBadges(storedUser.points);
+                if (!Array.isArray(storedUser.mysteryBoxes)) storedUser.mysteryBoxes = [];
               setUser(storedUser);
           } catch (e) {
               console.error("Failed to parse stored user:", e);
@@ -79,6 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
              image: firebaseUser.photoURL,
              points: initialPoints,
              badges: initialBadges,
+             mysteryBoxes: [],
            };
            storedUsers.push(newUser);
            localStorage.setItem(LEARN_AI_REGISTERED_USERS_KEY, JSON.stringify(storedUsers));
@@ -86,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            const leaderboardJSON = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
            const leaderboard: LeaderboardUser[] = leaderboardJSON ? JSON.parse(leaderboardJSON) : [];
            if (!leaderboard.find(lu => lu.id === newUser.id)) {
-              leaderboard.push({ id: newUser.id, name: newUser.name || "User", points: 0, badges: [] });
+              leaderboard.push({ id: newUser.id, name: newUser.name || "User", points: 0, badges: [], mysteryBoxes: [] });
               localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(leaderboard));
            }
            login(newUser);
@@ -100,6 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const storedUser = JSON.parse(storedUserJson) as User;
                  if (typeof storedUser.points !== 'number') storedUser.points = 0;
                  if (!Array.isArray(storedUser.badges)) storedUser.badges = getEarnedBadges(storedUser.points);
+                 if (!Array.isArray(storedUser.mysteryBoxes)) storedUser.mysteryBoxes = [];
                 setUser(storedUser);
             } catch (e) {
                 console.error("Failed to parse stored user:", e);
@@ -122,6 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       ...userData,
       points: userData.points || 0,
       badges: userData.badges || getEarnedBadges(userData.points || 0),
+      mysteryBoxes: userData.mysteryBoxes || [],
     };
     setUser(userWithGamification);
     localStorage.setItem(LEARN_AI_USER_KEY, JSON.stringify(userWithGamification));
@@ -146,37 +181,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       points: newPoints,
       badges: newBadges,
     };
-    setUser(updatedUser);
-    localStorage.setItem(LEARN_AI_USER_KEY, JSON.stringify(updatedUser));
+    updateUserInLocalStorage(updatedUser);
+  };
+  
+  const addMysteryBox = (box: MysteryBox) => {
+    if (!user) return;
+    const updatedUser: User = {
+      ...user,
+      mysteryBoxes: [...(user.mysteryBoxes || []), box],
+    };
+    updateUserInLocalStorage(updatedUser);
+  };
 
-    // Update leaderboard storage
-    try {
-      const leaderboardUsersJson = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
-      let leaderboardUsers: LeaderboardUser[] = leaderboardUsersJson ? JSON.parse(leaderboardUsersJson) : [];
-      
-      const userIndexInLeaderboard = leaderboardUsers.findIndex(u => u.id === user.id);
-      if (userIndexInLeaderboard !== -1) {
-        leaderboardUsers[userIndexInLeaderboard].points = newPoints;
-        leaderboardUsers[userIndexInLeaderboard].badges = newBadges;
-      } else {
-        // This case should ideally not happen if user is added to leaderboard on registration
-        leaderboardUsers.push({
-          id: user.id,
-          name: user.name || "Anonymous",
-          points: newPoints,
-          badges: newBadges,
-        });
+  const openMysteryBox = (): MysteryBox | undefined => {
+      if (!user || !user.mysteryBoxes || user.mysteryBoxes.length === 0) {
+        return undefined;
       }
-      localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(leaderboardUsers));
-    } catch (e) {
-      console.error("Failed to update leaderboard:", e);
-    }
+      const [openedBox, ...remainingBoxes] = user.mysteryBoxes;
+      const updatedUser: User = {
+          ...user,
+          mysteryBoxes: remainingBoxes,
+      };
+      updateUserInLocalStorage(updatedUser);
+      return openedBox;
   };
   
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, loading, addPoints }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, loading, addPoints, addMysteryBox, openMysteryBox }}>
       {children}
     </AuthContext.Provider>
   );

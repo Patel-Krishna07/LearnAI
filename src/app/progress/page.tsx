@@ -9,12 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Award, BarChart3, Brain, Compass, Diamond, GraduationCap, ShieldCheck, Sparkles, Star, Trophy, Zap, Gift, TrendingUp } from 'lucide-react';
-import type { User, LeaderboardUser, BadgeDefinition as BadgeDefinitionType } from '@/lib/types';
+import type { User, LeaderboardUser, BadgeDefinition as BadgeDefinitionType, MysteryBox as MysteryBoxType } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { LucideIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 // Map badge names to Lucide icons
 const badgeIcons: { [key: string]: LucideIcon } = {
@@ -29,10 +30,11 @@ const badgeIcons: { [key: string]: LucideIcon } = {
 const LEARN_AI_LEADERBOARD_KEY = 'learnai-leaderboard-users';
 
 export default function ProgressPage() {
-  const { isAuthenticated, user, loading: authLoading } = useAuth();
+  const { isAuthenticated, user, loading: authLoading, openMysteryBox } = useAuth();
   const router = useRouter();
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
+  const { toast } = useToast();
 
   const currentXP = user?.points || 0;
   const nextLevelXP = BADGE_DEFINITIONS.find(b => b.pointsThreshold > currentXP)?.pointsThreshold || (currentXP > 0 ? currentXP + 100 : 100);
@@ -59,6 +61,17 @@ export default function ProgressPage() {
     }
   }, [isAuthenticated, user]);
 
+  const handleOpenBox = () => {
+    const openedBox = openMysteryBox();
+    if (openedBox) {
+        // In a real app, you'd show a modal with the reward details
+        toast({
+            title: `You opened a ${openedBox.tier} Mystery Box!`,
+            description: `You received a reward! (Full reward details coming soon).`,
+        });
+    }
+  };
+
 
   if (authLoading || (pageLoading && isAuthenticated)) {
     return <AppShell><div className="flex items-center justify-center h-[calc(100vh-150px)]"><Sparkles className="h-12 w-12 text-accent animate-spin" /><p className="ml-4 text-xl text-muted-foreground">Loading your progress...</p></div></AppShell>;
@@ -68,6 +81,7 @@ export default function ProgressPage() {
   }
 
   const userBadgesWithDetails: BadgeDefinitionType[] = BADGE_DEFINITIONS.filter(def => user.badges.includes(def.name)).map(def => ({ ...def, icon: badgeIcons[def.name] || ShieldCheck }));
+  const unopenedBoxes = user.mysteryBoxes || [];
 
   return (
     <AppShell>
@@ -82,7 +96,7 @@ export default function ProgressPage() {
           <Card className="shadow-lg"><CardHeader><CardTitle className="text-2xl font-headline flex items-center gap-2"><Zap className="text-primary h-6 w-6" /> Your Stats</CardTitle></CardHeader><CardContent className="space-y-6"><div className="flex items-center justify-between p-4 bg-secondary rounded-lg shadow"><span className="text-lg font-medium text-secondary-foreground">Total XP Points</span><span className="text-3xl font-bold text-primary">{user.points}</span></div><div><h3 className="text-lg font-semibold mb-3 text-primary">Your Badges ({userBadgesWithDetails.length})</h3>{userBadgesWithDetails.length > 0 ? (<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">{userBadgesWithDetails.map((badge) => { const IconComponent = badge.icon; return (<Card key={badge.name} className="flex flex-col items-center p-4 text-center bg-background shadow-md hover:shadow-lg transition-shadow border-t-4 border-accent"><IconComponent className="h-10 w-10 text-accent mb-2" /><p className="font-semibold text-sm">{badge.name}</p><p className="text-xs text-muted-foreground">{badge.description}</p></Card>); })}</div>) : (<p className="text-muted-foreground">No badges earned yet. Keep learning to earn your first badge!</p>)}</div></CardContent></Card>
           <div className="space-y-8">
              <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl font-headline flex items-center gap-2"><TrendingUp className="text-primary h-6 w-6" /> Progress to Next Milestone</CardTitle></CardHeader><CardContent className="space-y-3"><Progress value={progressPercentage} className="h-3" /><div className="flex justify-between text-sm text-muted-foreground"><span>Current XP: {currentXP}</span><span>Next Milestone at: {nextLevelXP} XP</span></div><p className="text-xs text-center text-muted-foreground italic">Keep learning to unlock more badges and climb the leaderboard!</p></CardContent></Card>
-             <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl font-headline flex items-center gap-2"><Gift className="text-primary h-6 w-6" /> Mystery Box</CardTitle></CardHeader><CardContent><div className="flex flex-col items-center text-center p-4 bg-secondary/50 rounded-md"><Gift className="h-12 w-12 text-accent mb-3" /><p className="font-semibold">Answer questions correctly in a streak to unlock a Mystery Box!</p><p className="text-sm text-muted-foreground mt-1">(Feature coming soon)</p><Button disabled className="mt-4">Check Streak (Coming Soon)</Button></div></CardContent></Card>
+             <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl font-headline flex items-center gap-2"><Gift className="text-primary h-6 w-6" /> Mystery Box Inventory</CardTitle><CardDescription>You have {unopenedBoxes.length} unopened box{unopenedBoxes.length !== 1 && 'es'}.</CardDescription></CardHeader><CardContent className="text-center p-4"><div className="flex flex-wrap gap-4 justify-center mb-4">{unopenedBoxes.length > 0 ? (unopenedBoxes.map((box) => <Gift key={box.id} className="h-12 w-12 text-accent animate-pulse" />)) : (<p className="text-muted-foreground">No boxes yet. Earn them by getting perfect scores or long answer streaks!</p>)}</div>{unopenedBoxes.length > 0 && (<Button onClick={handleOpenBox}>Open a Mystery Box</Button>)}</CardContent></Card>
           </div>
         </div>
 
