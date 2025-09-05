@@ -34,6 +34,7 @@ export default function ProgressPage() {
   const router = useRouter();
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
+  const [isOpeningBox, setIsOpeningBox] = useState(false);
   const { toast } = useToast();
 
   const currentXP = user?.points || 0;
@@ -59,14 +60,21 @@ export default function ProgressPage() {
       }
       setPageLoading(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user]); // Re-run when user changes to get latest leaderboard
 
-  const handleOpenBox = () => {
-    const reward = openMysteryBox(); // This function now returns the reward
+  const handleOpenBox = async () => {
+    setIsOpeningBox(true);
+    const reward = await openMysteryBox();
     if (reward) {
         toast({
             title: `You opened a ${reward.tier} Mystery Box!`,
-            description: `You received: ${reward.description}`,
+            description: (
+              <div>
+                <p className="font-bold text-lg text-primary">{reward.reward}</p>
+                <p className="italic text-muted-foreground">&quot;{reward.message}&quot;</p>
+              </div>
+            ),
+            duration: 7000,
         });
     } else {
         toast({
@@ -75,6 +83,7 @@ export default function ProgressPage() {
             variant: "destructive"
         })
     }
+    setIsOpeningBox(false);
   };
 
 
@@ -102,17 +111,21 @@ export default function ProgressPage() {
         </header>
 
         <div className="grid md:grid-cols-2 gap-8">
-          <Card className="shadow-lg"><CardHeader><CardTitle className="text-2xl font-headline flex items-center gap-2"><Zap className="text-primary h-6 w-6" /> Your Stats</CardTitle></CardHeader><CardContent className="space-y-6"><div className="flex items-center justify-between p-4 bg-secondary rounded-lg shadow"><span className="text-lg font-medium text-secondary-foreground">Total XP Points</span><span className="text-3xl font-bold text-primary">{user.points}</span></div><div><h3 className="text-lg font-semibold mb-3 text-primary">Your Badges ({userBadgesWithDetails.length})</h3>{userBadgesWithDetails.length > 0 ? (<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">{userBadgesWithDetails.map((badge) => { const IconComponent = badge.icon; return (<Card key={badge.name} className="flex flex-col items-center p-4 text-center bg-background shadow-md hover:shadow-lg transition-shadow border-t-4 border-accent"><IconComponent className="h-10 w-10 text-accent mb-2" /><p className="font-semibold text-sm">{badge.name}</p><p className="text-xs text-muted-foreground">{badge.description}</p></Card>); })}</div>) : (<p className="text-muted-foreground">No badges earned yet. Keep learning to earn your first badge!</p>)}</div></CardContent></Card>
+          <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="text-2xl font-headline flex items-center gap-2"><Zap className="text-primary h-6 w-6" /> Your Stats</CardTitle>
+                {user.title && <CardDescription className="text-lg text-accent font-semibold">{user.title}</CardDescription>}
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-secondary rounded-lg shadow"><span className="text-lg font-medium text-secondary-foreground">Total XP Points</span><span className="text-3xl font-bold text-primary">{user.points}</span></div><div><h3 className="text-lg font-semibold mb-3 text-primary">Your Badges ({userBadgesWithDetails.length})</h3>{userBadgesWithDetails.length > 0 ? (<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">{userBadgesWithDetails.map((badge) => { const IconComponent = badge.icon; return (<Card key={badge.name} className="flex flex-col items-center p-4 text-center bg-background shadow-md hover:shadow-lg transition-shadow border-t-4 border-accent"><IconComponent className="h-10 w-10 text-accent mb-2" /><p className="font-semibold text-sm">{badge.name}</p><p className="text-xs text-muted-foreground">{badge.description}</p></Card>); })}</div>) : (<p className="text-muted-foreground">No badges earned yet. Keep learning to earn your first badge!</p>)}</div></CardContent></Card>
           <div className="space-y-8">
              <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl font-headline flex items-center gap-2"><TrendingUp className="text-primary h-6 w-6" /> Progress to Next Milestone</CardTitle></CardHeader><CardContent className="space-y-3"><Progress value={progressPercentage} className="h-3" /><div className="flex justify-between text-sm text-muted-foreground"><span>Current XP: {currentXP}</span><span>Next Milestone at: {nextLevelXP} XP</span></div><p className="text-xs text-center text-muted-foreground italic">Keep learning to unlock more badges and climb the leaderboard!</p></CardContent></Card>
-             <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl font-headline flex items-center gap-2"><Gift className="text-primary h-6 w-6" /> Mystery Box Inventory</CardTitle><CardDescription>You have {unopenedBoxes.length} unopened box{unopenedBoxes.length !== 1 && 'es'}.</CardDescription></CardHeader><CardContent className="text-center p-4"><div className="flex flex-wrap gap-4 justify-center mb-4">{unopenedBoxes.length > 0 ? (unopenedBoxes.map((box) => <Gift key={box.id} className="h-12 w-12 text-accent animate-pulse" />)) : (<p className="text-muted-foreground">No boxes yet. Earn them by getting perfect scores or long answer streaks!</p>)}</div>{unopenedBoxes.length > 0 && (<Button onClick={handleOpenBox}>Open a Mystery Box</Button>)}</CardContent></Card>
+             <Card className="shadow-lg"><CardHeader><CardTitle className="text-xl font-headline flex items-center gap-2"><Gift className="text-primary h-6 w-6" /> Mystery Box Inventory</CardTitle><CardDescription>You have {unopenedBoxes.length} unopened box{unopenedBoxes.length !== 1 && 'es'}.</CardDescription></CardHeader><CardContent className="text-center p-4"><div className="flex flex-wrap gap-4 justify-center mb-4">{unopenedBoxes.length > 0 ? (unopenedBoxes.map((box) => <Gift key={box.id} className="h-12 w-12 text-accent animate-pulse" />)) : (<p className="text-muted-foreground">No boxes yet. Earn them by getting perfect scores or long answer streaks!</p>)}</div>{unopenedBoxes.length > 0 && (<Button onClick={handleOpenBox} disabled={isOpeningBox}>{isOpeningBox ? 'Opening...' : 'Open a Mystery Box'}</Button>)}</CardContent></Card>
           </div>
         </div>
 
-        <Card className="shadow-lg"><CardHeader><CardTitle className="text-2xl font-headline flex items-center gap-2"><BarChart3 className="text-primary h-6 w-6" /> Classroom Leaderboard</CardTitle><CardDescription>See who's leading the learning charge! (Based on users in this browser)</CardDescription></CardHeader><CardContent>{leaderboard.length > 0 ? (<ScrollArea className="h-[300px]"><Table><TableHeader><TableRow><TableHead className="w-[50px]">Rank</TableHead><TableHead>Name</TableHead><TableHead className="text-right">Points</TableHead><TableHead className="text-center">Badges</TableHead></TableRow></TableHeader><TableBody>{leaderboard.map((lbUser, index) => (<TableRow key={lbUser.id} className={lbUser.id === user.id ? 'bg-accent/20' : ''}><TableCell className="font-medium">{index + 1}</TableCell><TableCell>{lbUser.name}</TableCell><TableCell className="text-right font-semibold">{lbUser.points}</TableCell><TableCell className="text-center"><div className="flex justify-center items-center gap-1">{(lbUser.badges || []).slice(0,3).map(badgeName => { const BadgeIcon = badgeIcons[badgeName] || Star; return <BadgeIcon key={badgeName} className="h-4 w-4 text-muted-foreground" title={badgeName}/>; })}{ (lbUser.badges || []).length > 3 && <span className="text-xs text-muted-foreground ml-1">+{ (lbUser.badges || []).length - 3}</span>}</div></TableCell></TableRow>))}</TableBody></Table></ScrollArea>) : (<p className="text-muted-foreground text-center py-8">No leaderboard data yet. Be the first to set the pace!</p>)}</CardContent><CardFooter><p className="text-xs text-muted-foreground">Leaderboard data is stored locally in your browser.</p></CardFooter></Card>
+        <Card className="shadow-lg"><CardHeader><CardTitle className="text-2xl font-headline flex items-center gap-2"><BarChart3 className="text-primary h-6 w-6" /> Classroom Leaderboard</CardTitle><CardDescription>See who's leading the learning charge! (Based on users in this browser)</CardDescription></CardHeader><CardContent>{leaderboard.length > 0 ? (<ScrollArea className="h-[300px]"><Table><TableHeader><TableRow><TableHead className="w-[50px]">Rank</TableHead><TableHead>Name</TableHead><TableHead className="text-right">Points</TableHead><TableHead className="text-center">Badges</TableHead></TableRow></TableHeader><TableBody>{leaderboard.map((lbUser, index) => (<TableRow key={lbUser.id} className={lbUser.id === user.id ? 'bg-accent/20' : ''}><TableCell className="font-medium">{index + 1}</TableCell><TableCell>{lbUser.name} {lbUser.title && <span className="text-xs text-accent italic ml-1" title={lbUser.title}>{lbUser.title}</span>}</TableCell><TableCell className="text-right font-semibold">{lbUser.points}</TableCell><TableCell className="text-center"><div className="flex justify-center items-center gap-1">{(lbUser.badges || []).slice(0,3).map(badgeName => { const BadgeIcon = badgeIcons[badgeName] || Star; return <BadgeIcon key={badgeName} className="h-4 w-4 text-muted-foreground" title={badgeName}/>; })}{ (lbUser.badges || []).length > 3 && <span className="text-xs text-muted-foreground ml-1">+{ (lbUser.badges || []).length - 3}</span>}</div></TableCell></TableRow>))}</TableBody></Table></ScrollArea>) : (<p className="text-muted-foreground text-center py-8">No leaderboard data yet. Be the first to set the pace!</p>)}</CardContent><CardFooter><p className="text-xs text-muted-foreground">Leaderboard data is stored locally in your browser.</p></CardFooter></Card>
       </div>
     </AppShell>
   );
 }
-
-    

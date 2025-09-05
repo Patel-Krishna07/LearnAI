@@ -1,11 +1,12 @@
 
 "use client";
 
-import type { User, LeaderboardUser, MysteryBox, MysteryBoxReward, MysteryBoxTier } from '@/lib/types';
+import type { User, LeaderboardUser, MysteryBox, MysteryBoxReward } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { auth } from '@/lib/firebase/config';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
+import { generateMysteryBoxReward } from '@/ai/flows/generate-mystery-box-reward';
 
 
 interface AuthContextType {
@@ -16,7 +17,7 @@ interface AuthContextType {
   loading: boolean;
   addPoints: (pointsToAdd: number) => void;
   addMysteryBox: (box: MysteryBox) => void;
-  openMysteryBox: () => MysteryBoxReward | undefined;
+  openMysteryBox: () => Promise<MysteryBoxReward | undefined>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,12 +38,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const updateUserInLocalStorage = (updatedUser: User) => {
+  const updateUserInLocalStorage = (updatedUser: User | null) => {
+    if (!updatedUser) {
+        setUser(null);
+        localStorage.removeItem(LEARN_AI_USER_KEY);
+        // Note: We are not removing the user from the leaderboard on logout
+        return;
+    }
+
     setUser(updatedUser);
     localStorage.setItem(LEARN_AI_USER_KEY, JSON.stringify(updatedUser));
 
-    // Update leaderboard storage as well
-     try {
+    try {
       const leaderboardUsersJson = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
       let leaderboardUsers: LeaderboardUser[] = leaderboardUsersJson ? JSON.parse(leaderboardUsersJson) : [];
       
@@ -51,6 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         leaderboardUsers[userIndexInLeaderboard].points = updatedUser.points;
         leaderboardUsers[userIndexInLeaderboard].badges = updatedUser.badges;
         leaderboardUsers[userIndexInLeaderboard].mysteryBoxes = updatedUser.mysteryBoxes;
+        leaderboardUsers[userIndexInLeaderboard].title = updatedUser.title;
       } else {
          leaderboardUsers.push({
           id: updatedUser.id,
@@ -58,8 +66,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           points: updatedUser.points,
           badges: updatedUser.badges,
           mysteryBoxes: updatedUser.mysteryBoxes,
+          title: updatedUser.title,
         });
       }
+      // Re-sort leaderboard after update
+      leaderboardUsers.sort((a, b) => b.points - a.points);
       localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(leaderboardUsers));
     } catch (e) {
       console.error("Failed to update leaderboard:", e);
@@ -67,7 +78,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // If Firebase is not configured, auth will be null. Fallback to local-only check.
     if (!auth) {
       const storedUserJson = localStorage.getItem(LEARN_AI_USER_KEY);
       if (storedUserJson) {
@@ -91,17 +101,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // User is signed in via Firebase
         const storedUsersJSON = localStorage.getItem(LEARN_AI_REGISTERED_USERS_KEY);
         const storedUsers: User[] = storedUsersJSON ? JSON.parse(storedUsersJSON) : [];
         let appUser = storedUsers.find(u => u.email === firebaseUser.email);
         
         if (appUser) {
-          // Found user in our local storage, log them into the app context
           login(appUser);
         } else {
-           // This case can happen if user signed up with Google but local storage was cleared
-           // We'll create a local record for them.
            const initialPoints = 0;
            const initialBadges = getEarnedBadges(initialPoints);
            const newUser: User = {
@@ -115,7 +121,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            };
            storedUsers.push(newUser);
            localStorage.setItem(LEARN_AI_REGISTERED_USERS_KEY, JSON.stringify(storedUsers));
-           // Also add to leaderboard
            const leaderboardJSON = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
            const leaderboard: LeaderboardUser[] = leaderboardJSON ? JSON.parse(leaderboardJSON) : [];
            if (!leaderboard.find(lu => lu.id === newUser.id)) {
@@ -125,8 +130,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            login(newUser);
         }
       } else {
-        // User is signed out from Firebase's perspective, or was never signed in.
-        // Check for our own localStorage-based user.
         const storedUserJson = localStorage.getItem(LEARN_AI_USER_KEY);
         if (storedUserJson) {
             try {
@@ -147,7 +150,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
@@ -157,6 +159,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       points: userData.points || 0,
       badges: userData.badges || getEarnedBadges(userData.points || 0),
       mysteryBoxes: userData.mysteryBoxes || [],
+      title: userData.title,
     };
     setUser(userWithGamification);
     localStorage.setItem(LEARN_AI_USER_KEY, JSON.stringify(userWithGamification));
@@ -170,18 +173,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem(LEARN_AI_USER_KEY);
   };
 
-  const addPoints = (pointsToAdd: number) => {
-    if (!user) return;
-
-    const newPoints = (user.points || 0) + pointsToAdd;
+  const addPoints = (pointsToAdd: number, currentUser: User): User => {
+    const newPoints = (currentUser.points || 0) + pointsToAdd;
     const newBadges = getEarnedBadges(newPoints);
-
-    const updatedUser: User = {
-      ...user,
-      points: newPoints,
-      badges: newBadges,
-    };
-    updateUserInLocalStorage(updatedUser);
+    return { ...currentUser, points: newPoints, badges: newBadges };
   };
   
   const addMysteryBox = (box: MysteryBox) => {
@@ -193,57 +188,93 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     updateUserInLocalStorage(updatedUser);
   };
 
-  const openMysteryBox = (): MysteryBoxReward | undefined => {
+  const openMysteryBox = async (): Promise<MysteryBoxReward | undefined> => {
       if (!user || !user.mysteryBoxes || user.mysteryBoxes.length === 0) {
         return undefined;
       }
-      // Reward definitions
-      const rewards: Record<MysteryBoxTier, { description: string, action: () => void }[]> = {
-          Common: [
-              { description: '+20 XP', action: () => addPoints(20) },
-              { description: 'A fun fact!', action: () => {} }, // No action, just a message
-              { description: 'A small hint token', action: () => {} }, // Placeholder
-          ],
-          Rare: [
-              { description: '+50 XP', action: () => addPoints(50) },
-              { description: 'A new badge!', action: () => {} }, // Placeholder
-              { description: 'A study flashcard!', action: () => {} }, // Placeholder
-          ],
-          Epic: [
-              { description: '+100 XP', action: () => addPoints(100) },
-              { description: 'Avatar customization item!', action: () => {} }, // Placeholder
-              { description: 'Double XP booster (1 hr)!', action: () => {} }, // Placeholder
-          ],
-          Legendary: [
-              { description: '+200 XP', action: () => addPoints(200) },
-              { description: 'An exclusive title/badge!', action: () => {} }, // Placeholder
-              { description: 'A leaderboard jump!', action: () => {} }, // Placeholder
-          ],
-      };
-
-      const [openedBox, ...remainingBoxes] = user.mysteryBoxes;
-
-      const possibleRewards = rewards[openedBox.tier];
-      const selectedReward = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
       
-      // Perform the reward's action (e.g., add points)
-      selectedReward.action();
+      const [openedBox, ...remainingBoxes] = user.mysteryBoxes;
+      let currentUserState = { ...user, mysteryBoxes: remainingBoxes };
+      let finalReward: MysteryBoxReward;
+      
+      const rand = Math.random() * 100;
+      let chosenTier: 'Common' | 'Rare' | 'Epic' | 'Legendary';
+      if (rand < 1) chosenTier = 'Legendary';
+      else if (rand < 10) chosenTier = 'Epic';
+      else if (rand < 40) chosenTier = 'Rare';
+      else chosenTier = 'Common';
 
-      // Update the user state *after* the action has modified it (e.g., points have been added)
-      // We need to re-fetch the user from state to ensure we have the latest data before saving
-      setUser(currentUser => {
-          const userAfterReward: User = {
-              ...(currentUser!),
-              mysteryBoxes: remainingBoxes,
-          };
-          updateUserInLocalStorage(userAfterReward);
-          return userAfterReward;
-      });
+      try {
+        if (chosenTier === 'Common') {
+            const commonRewards = ['+20 XP', 'fun fact', 'hint token'];
+            const chosen = commonRewards[Math.floor(Math.random() * commonRewards.length)];
+            if (chosen === '+20 XP') {
+                currentUserState = addPoints(20, currentUserState);
+                finalReward = { tier: 'Common', reward: '+20 XP', message: 'A nice boost to your points!' };
+            } else {
+                const result = await generateMysteryBoxReward({ tier: 'Common' });
+                finalReward = { tier: 'Common', reward: result.reward, message: result.message };
+            }
+        } else if (chosenTier === 'Rare') {
+            const rareRewards = ['+50 XP', 'new badge', 'study flashcards'];
+            const chosen = rareRewards[Math.floor(Math.random() * rareRewards.length)];
+             if (chosen === '+50 XP') {
+                currentUserState = addPoints(50, currentUserState);
+                finalReward = { tier: 'Rare', reward: '+50 XP', message: 'Excellent! Keep up the great work.' };
+            } else { // Placeholder for other rare rewards
+                finalReward = { tier: 'Rare', reward: 'A rare study flashcard!', message: 'This looks useful for later!' };
+            }
+        } else if (chosenTier === 'Epic') {
+            const epicRewards = ['+100 XP', 'double xp booster'];
+            const chosen = epicRewards[Math.floor(Math.random() * epicRewards.length)];
+            if (chosen === '+100 XP') {
+                currentUserState = addPoints(100, currentUserState);
+                finalReward = { tier: 'Epic', reward: '+100 XP', message: 'An epic point haul! You\'re on fire!' };
+            } else { // Placeholder
+                finalReward = { tier: 'Epic', reward: 'Double XP Booster (1hr)!', message: 'All points are doubled for an hour!' };
+            }
+        } else { // Legendary
+            const legendaryRewards = ['+200 XP', 'exclusive title/badge', 'leaderboard jump'];
+            const chosen = legendaryRewards[Math.floor(Math.random() * legendaryRewards.length)];
+            if (chosen === '+200 XP') {
+                currentUserState = addPoints(200, currentUserState);
+                finalReward = { tier: 'Legendary', reward: '+200 XP', message: 'Legendary! Your knowledge is vast.' };
+            } else if (chosen === 'exclusive title/badge') {
+                const result = await generateMysteryBoxReward({ tier: 'Legendary' });
+                currentUserState.title = result.reward;
+                finalReward = { tier: 'Legendary', reward: `New Title: ${result.reward}`, message: result.message };
+            } else { // Leaderboard Jump
+                const leaderboardUsersJson = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
+                let leaderboardUsers: LeaderboardUser[] = leaderboardUsersJson ? JSON.parse(leaderboardUsersJson) : [];
+                leaderboardUsers.sort((a, b) => b.points - a.points);
+                const userIndex = leaderboardUsers.findIndex(u => u.id === currentUserState.id);
 
-      return {
-        tier: openedBox.tier,
-        description: selectedReward.description,
-      };
+                if (userIndex > 0) {
+                    const userToSwapWith = leaderboardUsers[userIndex - 1];
+                    // Swap points and titles to effectively swap ranks
+                    [leaderboardUsers[userIndex].points, userToSwapWith.points] = [userToSwapWith.points, leaderboardUsers[userIndex].points];
+                    [leaderboardUsers[userIndex].title, userToSwapWith.title] = [userToSwapWith.title, leaderboardUsers[userIndex].title];
+                    
+                    // Update current user's points to reflect the jump
+                    currentUserState.points = leaderboardUsers[userIndex].points;
+                    
+                    localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(leaderboardUsers));
+                    finalReward = { tier: 'Legendary', reward: 'Leaderboard Jump!', message: 'You\'ve climbed one rank higher!' };
+                } else {
+                     // Already rank 1, give XP instead
+                    currentUserState = addPoints(200, currentUserState);
+                    finalReward = { tier: 'Legendary', reward: '+200 XP', message: 'You were already at the top, so here are some points!' };
+                }
+            }
+        }
+      } catch (error) {
+          console.error("Error opening mystery box, giving fallback reward", error);
+          currentUserState = addPoints(20, currentUserState);
+          finalReward = { tier: 'Common', reward: '+20 XP', message: 'We had a little trouble, but here are some points!' };
+      }
+
+      updateUserInLocalStorage(currentUserState);
+      return finalReward;
   };
   
   const isAuthenticated = !!user;
@@ -262,5 +293,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
-    

@@ -16,6 +16,7 @@ export interface User {
   points: number;
   badges: string[]; // Names of earned badges
   mysteryBoxes: MysteryBox[];
+  title?: string; // For Legendary reward
 }
 
 export interface ChatMessage {
@@ -48,11 +49,11 @@ export interface LeaderboardUser {
   points: number;
   badges: string[];
   mysteryBoxes: MysteryBox[];
+  title?: string; // For Legendary reward
 }
 
 export interface MysteryBoxReward {
-  tier: MysteryBoxTier;
-  description: string;
+  tier: 'Common' | 'Rare' | 'Epic' | 'Legendary';
+  reward: string;
+  message: string;
 }
-
-    

@@ -10,3 +10,4 @@ import '@/ai/flows/generate-mcq-flow.ts';
 import '@/ai/flows/generate-true-false-flow.ts';
 import '@/ai/flows/generate-fill-blank-flow.ts';
 import '@/ai/flows/generate-matching-pairs-flow.ts';
+import '@/ai/flows/generate-mystery-box-reward.ts';
