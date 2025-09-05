@@ -27,9 +27,13 @@ export const AUTH_NAV_LINKS = [
   { href: '/register', label: 'Register' },
 ];
 
-export const POINTS_FOR_PRACTICE_GENERATION = 10;
-export const POINTS_FOR_STUDY_GUIDE_ADD = 5;
-export const POINTS_FOR_QUIZ_QUESTION_CORRECT = 10;
+// --- XP Points System ---
+export const POINTS_PER_STUDY_GUIDE_ADD = 5;
+export const POINTS_PER_TRUE_FALSE_CORRECT = 5;
+export const POINTS_PER_PRACTICE_CORRECT = 8;
+export const POINTS_PER_MCQ_CORRECT = 10;
+export const POINTS_PER_FILL_BLANK_CORRECT = 12;
+export const POINTS_PER_MATCHING_CORRECT = 15;
 
 
 export interface BadgeDefinition {

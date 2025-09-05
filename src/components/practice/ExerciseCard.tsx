@@ -11,10 +11,20 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 interface ExerciseCardProps {
   exercise: PracticeExercise;
   index: number;
+  onCorrect: () => void;
 }
 
-export function ExerciseCard({ exercise, index }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, index, onCorrect }: ExerciseCardProps) {
   const [showAnswer, setShowAnswer] = useState(false);
+  const [answered, setAnswered] = useState(false);
+
+  const handleShowAnswer = () => {
+    setShowAnswer(true);
+    if (!answered) {
+      onCorrect();
+      setAnswered(true);
+    }
+  }
 
   return (
     <Card className="shadow-lg w-full">
@@ -36,13 +46,13 @@ export function ExerciseCard({ exercise, index }: ExerciseCardProps) {
       <CardFooter>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" onClick={() => setShowAnswer(!showAnswer)} className="w-full">
-              {showAnswer ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-              {showAnswer ? 'Hide Answer' : 'Show Answer'}
+            <Button variant="outline" onClick={handleShowAnswer} className="w-full">
+              <Eye className="mr-2 h-4 w-4" />
+              Show Answer
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{showAnswer ? 'Hide the answer' : 'Reveal the answer'}</p>
+            <p>Reveal the answer. Points are awarded once.</p>
           </TooltipContent>
         </Tooltip>
       </CardFooter>

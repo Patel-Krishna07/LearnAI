@@ -19,7 +19,7 @@ import { PenSquare, Lightbulb, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { POINTS_FOR_PRACTICE_GENERATION } from '@/lib/constants';
+import { POINTS_PER_PRACTICE_CORRECT } from '@/lib/constants';
 
 
 export default function PracticePage() {
@@ -62,8 +62,8 @@ export default function PracticePage() {
         if(newExercises.length === 0) {
           toast({ title: 'No exercises generated', description: 'The AI could not generate exercises for this topic. Try a different one.', variant: 'default' });
         } else {
-           addPoints(POINTS_FOR_PRACTICE_GENERATION);
-           toast({ title: 'Exercises Generated!', description: `Here are ${newExercises.length} exercises on "${data.topic}". +${POINTS_FOR_PRACTICE_GENERATION} points!` });
+           // Points are now awarded per correct answer in the ExerciseCard
+           toast({ title: 'Exercises Generated!', description: `Here are ${newExercises.length} exercises on "${data.topic}".` });
         }
       } else {
         throw new Error("AI response was not in the expected format.");
@@ -182,7 +182,7 @@ export default function PracticePage() {
             </h2>
             <div className="space-y-4">
               {exercises.map((ex, index) => (
-                <ExerciseCard key={ex.id} exercise={ex} index={index} />
+                <ExerciseCard key={ex.id} exercise={ex} index={index} onCorrect={() => addPoints(POINTS_PER_PRACTICE_CORRECT)} />
               ))}
             </div>
           </div>

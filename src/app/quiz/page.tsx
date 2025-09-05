@@ -16,7 +16,12 @@ import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ListChecks, Lightbulb, Sparkles, CheckCircle2, XCircle, Shuffle, Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { POINTS_FOR_QUIZ_QUESTION_CORRECT } from '@/lib/constants';
+import { 
+  POINTS_PER_MCQ_CORRECT,
+  POINTS_PER_TRUE_FALSE_CORRECT,
+  POINTS_PER_FILL_BLANK_CORRECT,
+  POINTS_PER_MATCHING_CORRECT
+} from '@/lib/constants';
 import { QuizTopicFormData, MatchingTopicFormData, QuizTopicSchema, MatchingTopicSchema } from '@/lib/schemas';
 
 import { generateMcqs, type McqQuestion } from '@/ai/flows/generate-mcq-flow';
@@ -36,7 +41,7 @@ const McqComponent = ({ question, onCorrect, questionNumber }: { question: McqQu
     setSelectedIndex(index);
     if (index === question.correctAnswerIndex) {
       onCorrect();
-      toast({ title: 'Correct!', description: `+${POINTS_FOR_QUIZ_QUESTION_CORRECT} XP!` });
+      toast({ title: 'Correct!', description: `+${POINTS_PER_MCQ_CORRECT} XP!` });
     } else {
       toast({ title: 'Not quite!', variant: 'destructive' });
     }
@@ -75,7 +80,7 @@ const TrueFalseComponent = ({ question, onCorrect, questionNumber }: { question:
     setSelected(answer);
     if (answer === question.isTrue) {
       onCorrect();
-      toast({ title: 'Correct!', description: `+${POINTS_FOR_QUIZ_QUESTION_CORRECT} XP!` });
+      toast({ title: 'Correct!', description: `+${POINTS_PER_TRUE_FALSE_CORRECT} XP!` });
     } else {
       toast({ title: 'Incorrect!', variant: 'destructive' });
     }
@@ -108,7 +113,7 @@ const FillBlankComponent = ({ question, onCorrect, questionNumber }: { question:
     setSubmitted(true);
     if (answer.trim().toLowerCase() === question.answer.toLowerCase()) {
       onCorrect();
-      toast({ title: 'Correct!', description: `+${POINTS_FOR_QUIZ_QUESTION_CORRECT} XP!` });
+      toast({ title: 'Correct!', description: `+${POINTS_PER_FILL_BLANK_CORRECT} XP!` });
     } else {
       toast({ title: 'Not quite!', description: `Correct answer: ${question.answer}`, variant: 'destructive' });
     }
@@ -156,10 +161,11 @@ const MatchingPairsComponent = ({ pairs, onCorrect }: { pairs: GenerateMatchingP
         if (pairs[selectedTerm.id].definition === def) {
             const newMatchedPairs = [...matchedPairs, selectedTerm.id];
             setMatchedPairs(newMatchedPairs);
-            toast({ title: 'Match Found!', description: 'Great job!' });
+            toast({ title: 'Match Found!', description: `Great job! +${POINTS_PER_MATCHING_CORRECT} XP!` });
+            onCorrect(POINTS_PER_MATCHING_CORRECT);
+
             if (newMatchedPairs.length === pairs.length) {
-                toast({ title: 'Challenge Complete!', description: `You earned ${POINTS_FOR_QUIZ_QUESTION_CORRECT * pairs.length} XP!` });
-                onCorrect(POINTS_FOR_QUIZ_QUESTION_CORRECT * pairs.length);
+                toast({ title: 'Challenge Complete!', description: `You matched all pairs!` });
             }
         } else {
             toast({ title: 'Not a match!', description: 'Try again.', variant: 'destructive' });
@@ -273,6 +279,7 @@ export default function QuizPage() {
         Component: React.ElementType,
         topic: string,
         numQuestions: number,
+        pointsPerCorrect: number
     ) => {
         if (loading[type]) {
             return (
@@ -286,7 +293,7 @@ export default function QuizPage() {
                 <div className="space-y-6 mt-6">
                     <h2 className="text-2xl font-bold text-center">Quiz on &quot;{topic}&quot;</h2>
                     {questions.map((q, index) => (
-                        <Component key={index} question={q} onCorrect={() => addPoints(POINTS_FOR_QUIZ_QUESTION_CORRECT)} questionNumber={index + 1} />
+                        <Component key={index} question={q} onCorrect={() => addPoints(pointsPerCorrect)} questionNumber={index + 1} />
                     ))}
                 </div>
             )
@@ -323,7 +330,7 @@ export default function QuizPage() {
                                 </form></Form>
                             </CardContent>
                         </Card>
-                        {renderQuizContent('mcq', mcqs, McqComponent, currentTopic.mcq, mcqForm.getValues('numQuestions'))}
+                        {renderQuizContent('mcq', mcqs, McqComponent, currentTopic.mcq, mcqForm.getValues('numQuestions'), POINTS_PER_MCQ_CORRECT)}
                     </TabsContent>
 
                     {/* True/False Tab */}
@@ -337,7 +344,7 @@ export default function QuizPage() {
                                 </form></Form>
                             </CardContent>
                         </Card>
-                        {renderQuizContent('trueFalse', trueFalses, TrueFalseComponent, currentTopic.trueFalse, trueFalseForm.getValues('numQuestions'))}
+                        {renderQuizContent('trueFalse', trueFalses, TrueFalseComponent, currentTopic.trueFalse, trueFalseForm.getValues('numQuestions'), POINTS_PER_TRUE_FALSE_CORRECT)}
                     </TabsContent>
 
                     {/* Fill the Blank Tab */}
@@ -351,7 +358,7 @@ export default function QuizPage() {
                                 </form></Form>
                             </CardContent>
                         </Card>
-                         {renderQuizContent('fillBlank', fillBlanks, FillBlankComponent, currentTopic.fillBlank, fillBlankForm.getValues('numQuestions'))}
+                         {renderQuizContent('fillBlank', fillBlanks, FillBlankComponent, currentTopic.fillBlank, fillBlankForm.getValues('numQuestions'), POINTS_PER_FILL_BLANK_CORRECT)}
                     </TabsContent>
 
                      {/* Matching Pairs Tab */}

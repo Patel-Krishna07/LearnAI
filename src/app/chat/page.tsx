@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { POINTS_FOR_STUDY_GUIDE_ADD } from '@/lib/constants';
+import { POINTS_PER_STUDY_GUIDE_ADD } from '@/lib/constants';
 
 const CHAT_MESSAGES_STORAGE_KEY = 'learnai-current-chatMessages';
 const INITIAL_GREETING_ID = 'initial-greeting';
@@ -229,10 +229,10 @@ export default function ChatPage() {
       });
       localStorage.setItem('studyGuideEntries', JSON.stringify(studyGuides));
       
-      addPoints(POINTS_FOR_STUDY_GUIDE_ADD);
+      addPoints(POINTS_PER_STUDY_GUIDE_ADD);
       toast({
         title: 'Added to Study Guide',
-        description: `"${questionText.substring(0,30)}..." saved. +${POINTS_FOR_STUDY_GUIDE_ADD} points!`,
+        description: `"${questionText.substring(0,30)}..." saved. +${POINTS_PER_STUDY_GUIDE_ADD} points!`,
       });
     } catch (error) {
       console.error('Error creating study guide entry:', error);
@@ -355,4 +355,3 @@ export default function ChatPage() {
     </AppShell>
   );
 }
-
