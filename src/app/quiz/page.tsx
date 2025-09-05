@@ -170,15 +170,16 @@ const MatchingPairsComponent = ({ pairs, onCorrect, onAnswered }: { pairs: Gener
             setMatchedPairs(newMatchedPairs);
             toast({ title: 'Match Found!', description: `Great job! +${POINTS_PER_MATCHING_CORRECT} XP!` });
             onCorrect(POINTS_PER_MATCHING_CORRECT);
+            onAnswered(true); // Pass true for correct answer
 
             if (newMatchedPairs.length === pairs.length) {
                 toast({ title: 'Challenge Complete!', description: `You matched all pairs!` });
             }
         } else {
             toast({ title: 'Not a match!', description: 'Try again.', variant: 'destructive' });
+            onAnswered(false); // Pass false for incorrect answer
         }
         setSelectedTerm(null);
-        onAnswered(isCorrect);
     };
 
     return (
@@ -261,20 +262,18 @@ export default function QuizPage() {
         });
     }, [addMysteryBox, toast]);
 
-    const checkQuizCompletion = (newState: QuizState) => {
+    const checkQuizCompletion = useCallback((newState: QuizState) => {
         if (newState.totalQuestions > 0 && newState.answeredQuestions === newState.totalQuestions) {
-            // All questions answered, check for perfect score
             if (newState.correctAnswers === newState.totalQuestions) {
                 toast({ title: "Perfect Score!", description: "Incredible! You've earned a special reward." });
                 awardMysteryBox();
             } else {
-                // Not a perfect score, check for random chance (e.g., 10%)
-                if (Math.random() < 0.1) { // 10% chance
+                if (Math.random() < 0.1) {
                     awardMysteryBox();
                 }
             }
         }
-    };
+    }, [awardMysteryBox, toast]);
 
     const resetQuizState = (totalQuestions: number) => {
         setQuizState({ totalQuestions, correctAnswers: 0, answeredQuestions: 0 });
@@ -282,19 +281,18 @@ export default function QuizPage() {
 
     const handleCorrectAnswer = (points: number) => {
         addPoints(points);
-        // Correct answer count is now managed in handleQuestionAnswered
     };
 
     const handleQuestionAnswered = (isCorrect: boolean) => {
-        const newState = { ...quizState };
-        newState.answeredQuestions++;
-        if (isCorrect) {
-            newState.correctAnswers++;
-        }
-        setQuizState(newState);
-        // We pass the new state directly to the completion check function
-        // because setState is async and quizState might not be updated yet.
+      setQuizState(prevState => {
+        const newState = {
+          ...prevState,
+          answeredQuestions: prevState.answeredQuestions + 1,
+          correctAnswers: isCorrect ? prevState.correctAnswers + 1 : prevState.correctAnswers,
+        };
         checkQuizCompletion(newState);
+        return newState;
+      });
     };
 
 
@@ -302,7 +300,6 @@ export default function QuizPage() {
         setLoading(prev => ({ ...prev, [type]: true }));
         setCurrentTopic(prev => ({ ...prev, [type]: data.topic }));
 
-        // Reset previous results
         if (type === 'mcq') setMcqs(null);
         if (type === 'trueFalse') setTrueFalses(null);
         if (type === 'fillBlank') setFillBlanks(null);
@@ -466,3 +463,5 @@ export default function QuizPage() {
         </AppShell>
     );
 }
+
+    
