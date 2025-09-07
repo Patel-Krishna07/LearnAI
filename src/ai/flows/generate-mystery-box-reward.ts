@@ -3,23 +3,11 @@
 /**
  * @fileOverview Generates dynamic rewards for the Mystery Box feature.
  * - generateMysteryBoxReward - Generates a reward based on a tier.
- * - GenerateMysteryBoxRewardInput - Input for the generation function.
- * - GenerateMysteryBoxRewardOutput - Output from the generation function.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import { GenerateMysteryBoxRewardInputSchema, type GenerateMysteryBoxRewardInput, type GenerateMysteryBoxRewardOutput, GenerateMysteryBoxRewardOutputSchema } from '@/lib/schemas';
 
-export const GenerateMysteryBoxRewardInputSchema = z.object({
-  tier: z.enum(['Common', 'Legendary']).describe('The tier of the mystery box to generate a reward for.'),
-});
-export type GenerateMysteryBoxRewardInput = z.infer<typeof GenerateMysteryBoxRewardInputSchema>;
-
-export const GenerateMysteryBoxRewardOutputSchema = z.object({
-  reward: z.string().describe('The generated reward text, e.g., a fun fact, a hint, or a title.'),
-  message: z.string().describe('A short, fun, and motivating message for the student.'),
-});
-export type GenerateMysteryBoxRewardOutput = z.infer<typeof GenerateMysteryBoxRewardOutputSchema>;
 
 export async function generateMysteryBoxReward(input: GenerateMysteryBoxRewardInput): Promise<GenerateMysteryBoxRewardOutput> {
   return generateMysteryBoxRewardFlow(input);

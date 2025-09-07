@@ -7,6 +7,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { auth } from '@/lib/firebase/config';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { generateMysteryBoxReward } from '@/ai/flows/generate-mystery-box-reward';
+import type { GenerateMysteryBoxRewardOutput } from '@/lib/schemas';
 
 
 interface AuthContextType {
@@ -17,7 +18,7 @@ interface AuthContextType {
   loading: boolean;
   addPoints: (pointsToAdd: number) => void;
   addMysteryBox: (box: MysteryBox) => void;
-  openMysteryBox: () => Promise<MysteryBoxReward | undefined>;
+  openMysteryBox: () => Promise<GenerateMysteryBoxRewardOutput | undefined>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,6 +76,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) {
       console.error("Failed to update leaderboard:", e);
     }
+  };
+  
+  const addPointsInternal = (pointsToAdd: number, currentUser: User): User => {
+    const newPoints = (currentUser.points || 0) + pointsToAdd;
+    const newBadges = getEarnedBadges(newPoints);
+    return { ...currentUser, points: newPoints, badges: newBadges };
   };
 
   useEffect(() => {
@@ -173,10 +180,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem(LEARN_AI_USER_KEY);
   };
 
-  const addPoints = (pointsToAdd: number, currentUser: User): User => {
-    const newPoints = (currentUser.points || 0) + pointsToAdd;
-    const newBadges = getEarnedBadges(newPoints);
-    return { ...currentUser, points: newPoints, badges: newBadges };
+  const addPoints = (pointsToAdd: number) => {
+    if (!user) return;
+    const updatedUser = addPointsInternal(pointsToAdd, user);
+    updateUserInLocalStorage(updatedUser);
   };
   
   const addMysteryBox = (box: MysteryBox) => {
@@ -188,93 +195,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     updateUserInLocalStorage(updatedUser);
   };
 
-  const openMysteryBox = async (): Promise<MysteryBoxReward | undefined> => {
-      if (!user || !user.mysteryBoxes || user.mysteryBoxes.length === 0) {
-        return undefined;
-      }
-      
-      const [openedBox, ...remainingBoxes] = user.mysteryBoxes;
-      let currentUserState = { ...user, mysteryBoxes: remainingBoxes };
-      let finalReward: MysteryBoxReward;
-      
-      const rand = Math.random() * 100;
-      let chosenTier: 'Common' | 'Rare' | 'Epic' | 'Legendary';
-      if (rand < 1) chosenTier = 'Legendary';
-      else if (rand < 10) chosenTier = 'Epic';
-      else if (rand < 40) chosenTier = 'Rare';
-      else chosenTier = 'Common';
+  const openMysteryBox = async (): Promise<GenerateMysteryBoxRewardOutput | undefined> => {
+    if (!user || !user.mysteryBoxes || user.mysteryBoxes.length === 0) {
+      return undefined;
+    }
+    
+    // 1. Decrement box count immediately
+    const [openedBox, ...remainingBoxes] = user.mysteryBoxes;
+    let currentUserState = { ...user, mysteryBoxes: remainingBoxes };
 
-      try {
-        if (chosenTier === 'Common') {
-            const commonRewards = ['+20 XP', 'fun fact', 'hint token'];
-            const chosen = commonRewards[Math.floor(Math.random() * commonRewards.length)];
-            if (chosen === '+20 XP') {
-                currentUserState = addPoints(20, currentUserState);
-                finalReward = { tier: 'Common', reward: '+20 XP', message: 'A nice boost to your points!' };
+    // 2. Determine reward based on probability
+    const rand = Math.random() * 100;
+    let finalReward: GenerateMysteryBoxRewardOutput;
+
+    try {
+      if (rand < 1) { // Legendary (1%)
+        const legendaryRewards = ['exclusive title/badge', 'leaderboard jump'];
+        const chosen = legendaryRewards[Math.floor(Math.random() * legendaryRewards.length)];
+        
+        if (chosen === 'exclusive title/badge') {
+          const result = await generateMysteryBoxReward({ tier: 'Legendary' });
+          currentUserState.title = result.reward;
+          finalReward = { reward: `New Title: ${result.reward}`, message: result.message };
+        } else { // Leaderboard Jump
+            const leaderboardUsersJson = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
+            let leaderboardUsers: LeaderboardUser[] = leaderboardUsersJson ? JSON.parse(leaderboardUsersJson) : [];
+            leaderboardUsers.sort((a, b) => b.points - a.points);
+            const userIndex = leaderboardUsers.findIndex(u => u.id === currentUserState.id);
+
+            if (userIndex > 0) {
+                const userToSwapWith = leaderboardUsers[userIndex - 1];
+                [leaderboardUsers[userIndex].points, userToSwapWith.points] = [userToSwapWith.points, leaderboardUsers[userIndex].points];
+                currentUserState.points = leaderboardUsers[userIndex].points;
+                localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(leaderboardUsers));
+                finalReward = { reward: 'Leaderboard Jump!', message: 'You\'ve climbed one rank higher!' };
             } else {
-                const result = await generateMysteryBoxReward({ tier: 'Common' });
-                finalReward = { tier: 'Common', reward: result.reward, message: result.message };
-            }
-        } else if (chosenTier === 'Rare') {
-            const rareRewards = ['+50 XP', 'new badge', 'study flashcards'];
-            const chosen = rareRewards[Math.floor(Math.random() * rareRewards.length)];
-             if (chosen === '+50 XP') {
-                currentUserState = addPoints(50, currentUserState);
-                finalReward = { tier: 'Rare', reward: '+50 XP', message: 'Excellent! Keep up the great work.' };
-            } else { // Placeholder for other rare rewards
-                finalReward = { tier: 'Rare', reward: 'A rare study flashcard!', message: 'This looks useful for later!' };
-            }
-        } else if (chosenTier === 'Epic') {
-            const epicRewards = ['+100 XP', 'double xp booster'];
-            const chosen = epicRewards[Math.floor(Math.random() * epicRewards.length)];
-            if (chosen === '+100 XP') {
-                currentUserState = addPoints(100, currentUserState);
-                finalReward = { tier: 'Epic', reward: '+100 XP', message: 'An epic point haul! You\'re on fire!' };
-            } else { // Placeholder
-                finalReward = { tier: 'Epic', reward: 'Double XP Booster (1hr)!', message: 'All points are doubled for an hour!' };
-            }
-        } else { // Legendary
-            const legendaryRewards = ['+200 XP', 'exclusive title/badge', 'leaderboard jump'];
-            const chosen = legendaryRewards[Math.floor(Math.random() * legendaryRewards.length)];
-            if (chosen === '+200 XP') {
-                currentUserState = addPoints(200, currentUserState);
-                finalReward = { tier: 'Legendary', reward: '+200 XP', message: 'Legendary! Your knowledge is vast.' };
-            } else if (chosen === 'exclusive title/badge') {
-                const result = await generateMysteryBoxReward({ tier: 'Legendary' });
-                currentUserState.title = result.reward;
-                finalReward = { tier: 'Legendary', reward: `New Title: ${result.reward}`, message: result.message };
-            } else { // Leaderboard Jump
-                const leaderboardUsersJson = localStorage.getItem(LEARN_AI_LEADERBOARD_KEY);
-                let leaderboardUsers: LeaderboardUser[] = leaderboardUsersJson ? JSON.parse(leaderboardUsersJson) : [];
-                leaderboardUsers.sort((a, b) => b.points - a.points);
-                const userIndex = leaderboardUsers.findIndex(u => u.id === currentUserState.id);
-
-                if (userIndex > 0) {
-                    const userToSwapWith = leaderboardUsers[userIndex - 1];
-                    // Swap points and titles to effectively swap ranks
-                    [leaderboardUsers[userIndex].points, userToSwapWith.points] = [userToSwapWith.points, leaderboardUsers[userIndex].points];
-                    [leaderboardUsers[userIndex].title, userToSwapWith.title] = [userToSwapWith.title, leaderboardUsers[userIndex].title];
-                    
-                    // Update current user's points to reflect the jump
-                    currentUserState.points = leaderboardUsers[userIndex].points;
-                    
-                    localStorage.setItem(LEARN_AI_LEADERBOARD_KEY, JSON.stringify(leaderboardUsers));
-                    finalReward = { tier: 'Legendary', reward: 'Leaderboard Jump!', message: 'You\'ve climbed one rank higher!' };
-                } else {
-                     // Already rank 1, give XP instead
-                    currentUserState = addPoints(200, currentUserState);
-                    finalReward = { tier: 'Legendary', reward: '+200 XP', message: 'You were already at the top, so here are some points!' };
-                }
+                currentUserState = addPointsInternal(200, currentUserState);
+                finalReward = { reward: '+200 XP', message: 'You were already at the top, so here are some points!' };
             }
         }
-      } catch (error) {
-          console.error("Error opening mystery box, giving fallback reward", error);
-          currentUserState = addPoints(20, currentUserState);
-          finalReward = { tier: 'Common', reward: '+20 XP', message: 'We had a little trouble, but here are some points!' };
+      } else if (rand < 10) { // Epic (9%)
+        currentUserState = addPointsInternal(100, currentUserState);
+        finalReward = { reward: '+100 XP', message: 'An epic point haul! You\'re on fire!' };
+      } else if (rand < 40) { // Rare (30%)
+        currentUserState = addPointsInternal(50, currentUserState);
+        finalReward = { reward: '+50 XP', message: 'Excellent! Keep up the great work.' };
+      } else { // Common (60%)
+        const commonRewards = ['+20 XP', 'fun fact'];
+        const chosen = commonRewards[Math.floor(Math.random() * commonRewards.length)];
+        if (chosen === '+20 XP') {
+            currentUserState = addPointsInternal(20, currentUserState);
+            finalReward = { reward: '+20 XP', message: 'A nice boost to your points!' };
+        } else {
+            const result = await generateMysteryBoxReward({ tier: 'Common' });
+            finalReward = { reward: result.reward, message: result.message };
+        }
       }
+    } catch (error) {
+        console.error("Error processing reward, giving fallback", error);
+        currentUserState = addPointsInternal(20, currentUserState);
+        finalReward = { reward: '+20 XP', message: 'We had a little trouble, so here are some points!' };
+    }
 
-      updateUserInLocalStorage(currentUserState);
-      return finalReward;
+    // 3. Save the final user state
+    updateUserInLocalStorage(currentUserState);
+    return finalReward;
   };
   
   const isAuthenticated = !!user;

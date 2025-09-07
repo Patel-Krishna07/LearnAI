@@ -44,3 +44,14 @@ export const MatchingTopicSchema = z.object({
   numPairs: z.coerce.number().min(3, 'Must have at least 3 pairs.').max(6, 'Cannot have more than 6 pairs.').default(4),
 });
 export type MatchingTopicFormData = z.infer<typeof MatchingTopicSchema>;
+
+export const GenerateMysteryBoxRewardInputSchema = z.object({
+  tier: z.enum(['Common', 'Legendary']).describe('The tier of the mystery box to generate a reward for.'),
+});
+export type GenerateMysteryBoxRewardInput = z.infer<typeof GenerateMysteryBoxRewardInputSchema>;
+
+export const GenerateMysteryBoxRewardOutputSchema = z.object({
+  reward: z.string().describe('The generated reward text, e.g., a fun fact, a hint, or a title.'),
+  message: z.string().describe('A short, fun, and motivating message for the student.'),
+});
+export type GenerateMysteryBoxRewardOutput = z.infer<typeof GenerateMysteryBoxRewardOutputSchema>;

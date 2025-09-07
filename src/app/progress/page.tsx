@@ -9,13 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Award, BarChart3, Brain, Compass, Diamond, GraduationCap, ShieldCheck, Sparkles, Star, Trophy, Zap, Gift, TrendingUp } from 'lucide-react';
-import type { User, LeaderboardUser, BadgeDefinition as BadgeDefinitionType, MysteryBox as MysteryBoxType, MysteryBoxReward } from '@/lib/types';
+import type { User, LeaderboardUser, BadgeDefinition as BadgeDefinitionType, MysteryBox as MysteryBoxType } from '@/lib/types';
 import { BADGE_DEFINITIONS } from '@/lib/constants';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { LucideIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import type { GenerateMysteryBoxRewardOutput } from '@/lib/schemas';
 
 // Map badge names to Lucide icons
 const badgeIcons: { [key: string]: LucideIcon } = {
@@ -67,7 +68,7 @@ export default function ProgressPage() {
     const reward = await openMysteryBox();
     if (reward) {
         toast({
-            title: `You opened a ${reward.tier} Mystery Box!`,
+            title: `You opened a Mystery Box!`,
             description: (
               <div>
                 <p className="font-bold text-lg text-primary">{reward.reward}</p>
