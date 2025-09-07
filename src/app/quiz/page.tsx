@@ -170,14 +170,14 @@ const MatchingPairsComponent = ({ pairs, onCorrect, onAnswered }: { pairs: Gener
             setMatchedPairs(newMatchedPairs);
             toast({ title: 'Match Found!', description: `Great job! +${POINTS_PER_MATCHING_CORRECT} XP!` });
             onCorrect(POINTS_PER_MATCHING_CORRECT);
-            onAnswered(true); // Pass true for correct answer
+            onAnswered(true);
 
             if (newMatchedPairs.length === pairs.length) {
                 toast({ title: 'Challenge Complete!', description: `You matched all pairs!` });
             }
         } else {
             toast({ title: 'Not a match!', description: 'Try again.', variant: 'destructive' });
-            onAnswered(false); // Pass false for incorrect answer
+            onAnswered(false);
         }
         setSelectedTerm(null);
     };
@@ -229,7 +229,6 @@ interface QuizSession {
     pairs: GenerateMatchingPairsOutput['pairs'] | null;
     totalQuestions: number;
     answeredQuestions: number;
-
     correctAnswers: number;
 }
 
@@ -254,6 +253,8 @@ export default function QuizPage() {
 
     const [loading, setLoading] = useState({ mcq: false, trueFalse: false, fillBlank: false, matching: false });
 
+    const [completedQuizType, setCompletedQuizType] = useState<QuizType | null>(null);
+
     // Forms
     const mcqForm = useForm<QuizTopicFormData>({ resolver: zodResolver(QuizTopicSchema), defaultValues: { topic: '', numQuestions: 3 } });
     const trueFalseForm = useForm<QuizTopicFormData>({ resolver: zodResolver(QuizTopicSchema), defaultValues: { topic: '', numQuestions: 3 } });
@@ -266,7 +267,7 @@ export default function QuizPage() {
     }, [authLoading, isAuthenticated, router]);
     
     const awardMysteryBox = useCallback(() => {
-        addMysteryBox({ id: Date.now().toString(), tier: 'Common', collectedAt: new Date() }); // Tier is for display, real tier is decided on open
+        addMysteryBox({ id: Date.now().toString(), tier: 'Common', collectedAt: new Date() });
         toast({
             title: "Mystery Box Awarded!",
             description: "You've earned a Mystery Box! Check your inventory on the Progress page.",
@@ -291,41 +292,49 @@ export default function QuizPage() {
         }
     }, [awardMysteryBox, toast]);
 
+    useEffect(() => {
+        let sessionToCheck: QuizSession | null = null;
+        if (completedQuizType === 'mcq') sessionToCheck = mcqSession;
+        else if (completedQuizType === 'trueFalse') sessionToCheck = trueFalseSession;
+        else if (completedQuizType === 'fillBlank') sessionToCheck = fillBlankSession;
+        else if (completedQuizType === 'matching') sessionToCheck = matchingSession;
+
+        if (sessionToCheck && sessionToCheck.answeredQuestions > 0) { // Only check if there's progress
+             if (sessionToCheck.totalQuestions > 0 && sessionToCheck.answeredQuestions === sessionToCheck.totalQuestions) {
+                checkQuizCompletion(sessionToCheck);
+                setCompletedQuizType(null); // Reset after checking
+            }
+        }
+    }, [mcqSession, trueFalseSession, fillBlankSession, matchingSession, completedQuizType, checkQuizCompletion]);
+
+
     const handleCorrectAnswer = (points: number) => {
         addPoints(points);
     };
 
     const handleQuestionAnswered = (type: QuizType, isCorrect: boolean) => {
-      const getSessionUpdater = (prevSession: QuizSession) => {
-          const newSession = {
+        const getSessionUpdater = (prevSession: QuizSession) => ({
             ...prevSession,
             answeredQuestions: prevSession.answeredQuestions + 1,
             correctAnswers: isCorrect ? prevSession.correctAnswers + 1 : prevSession.correctAnswers,
-          };
-          checkQuizCompletion(newSession);
-          return newSession;
-      };
+        });
 
-      if (type === 'mcq') setMcqSession(getSessionUpdater);
-      else if (type === 'trueFalse') setTrueFalseSession(getSessionUpdater);
-      else if (type === 'fillBlank') setFillBlankSession(getSessionUpdater);
-      // Matching is handled slightly differently since each pair is an "answer"
+        if (type === 'mcq') setMcqSession(getSessionUpdater);
+        else if (type === 'trueFalse') setTrueFalseSession(getSessionUpdater);
+        else if (type === 'fillBlank') setFillBlankSession(getSessionUpdater);
+        setCompletedQuizType(type);
     };
     
     const handleMatchingAnswered = (isCorrect: boolean) => {
-        const getSessionUpdater = (prevSession: QuizSession) => {
-            const newSession = {
-              ...prevSession,
-              // Only increment answeredQuestions for correct answers in matching to avoid penalizing for wrong guesses
-              answeredQuestions: isCorrect ? prevSession.answeredQuestions + 1 : prevSession.answeredQuestions,
-              correctAnswers: isCorrect ? prevSession.correctAnswers + 1 : prevSession.correctAnswers,
-            };
-            if(isCorrect) {
-              checkQuizCompletion(newSession);
-            }
-            return newSession;
-        };
-        setMatchingSession(getSessionUpdater);
+        const getSessionUpdater = (prevSession: QuizSession) => ({
+            ...prevSession,
+            answeredQuestions: isCorrect ? prevSession.answeredQuestions + 1 : prevSession.answeredQuestions,
+            correctAnswers: isCorrect ? prevSession.correctAnswers + 1 : prevSession.correctAnswers,
+        });
+        if (isCorrect) {
+          setMatchingSession(getSessionUpdater);
+          setCompletedQuizType('matching');
+        }
     };
 
 
@@ -334,7 +343,7 @@ export default function QuizPage() {
         
         const resetSession = (topic: string, questions: any[], pairs: any[] | null = null): QuizSession => ({
             topic,
-            questions: pairs ? [] : questions, // Matching component uses pairs directly
+            questions: pairs ? [] : questions,
             pairs: pairs,
             totalQuestions: pairs ? pairs.length : questions.length,
             answeredQuestions: 0,
