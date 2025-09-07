@@ -229,6 +229,7 @@ interface QuizSession {
     pairs: GenerateMatchingPairsOutput['pairs'] | null;
     totalQuestions: number;
     answeredQuestions: number;
+
     correctAnswers: number;
 }
 
@@ -263,7 +264,7 @@ export default function QuizPage() {
     useEffect(() => {
         if (!authLoading && !isAuthenticated) router.push('/login?redirect=/quiz');
     }, [authLoading, isAuthenticated, router]);
-
+    
     const awardMysteryBox = useCallback(() => {
         addMysteryBox({ id: Date.now().toString(), tier: 'Common', collectedAt: new Date() }); // Tier is for display, real tier is decided on open
         toast({
@@ -448,7 +449,7 @@ export default function QuizPage() {
                             <CardContent>
                                 <Form {...mcqForm}><form onSubmit={mcqForm.handleSubmit(data => handleGenerate('mcq', data))} className="space-y-4">
                                     <FormField control={mcqForm.control} name="topic" render={({ field }) => (<FormItem><ShadFormLabel>Topic</ShadFormLabel><FormControl><Input placeholder="e.g., The French Revolution" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={mcqForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={mcqForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 3)} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" className="w-full" disabled={loading.mcq}>{loading.mcq ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
                             </CardContent>
@@ -462,7 +463,7 @@ export default function QuizPage() {
                             <CardContent>
                                 <Form {...trueFalseForm}><form onSubmit={trueFalseForm.handleSubmit(data => handleGenerate('trueFalse', data))} className="space-y-4">
                                      <FormField control={trueFalseForm.control} name="topic" render={({ field }) => (<FormItem><ShadFormLabel>Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Human Anatomy" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                     <FormField control={trueFalseForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={trueFalseForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 3)} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" className="w-full" disabled={loading.trueFalse}>{loading.trueFalse ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
                             </CardContent>
@@ -476,7 +477,7 @@ export default function QuizPage() {
                             <CardContent>
                                 <Form {...fillBlankForm}><form onSubmit={fillBlankForm.handleSubmit(data => handleGenerate('fillBlank', data))} className="space-y-4">
                                      <FormField control={fillBlankForm.control} name="topic" render={({ field }) => (<FormItem><ShadFormLabel>Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Famous Poets" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                     <FormField control={fillBlankForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={fillBlankForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 3)} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" className="w-full" disabled={loading.fillBlank}>{loading.fillBlank ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
                             </CardContent>
@@ -490,7 +491,7 @@ export default function QuizPage() {
                              <CardContent>
                                 <Form {...matchingForm}><form onSubmit={matchingForm.handleSubmit(data => handleGenerate('matching', data))} className="space-y-4">
                                      <FormField control={matchingForm.control} name="topic" render={({ field }) => (<FormItem><ShadFormLabel>Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Chemical Elements" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                     <FormField control={matchingForm.control} name="numPairs" render={({ field }) => (<FormItem><ShadFormLabel>Number of Pairs (3-6)</ShadFormLabel><FormControl><Input type="number" min="3" max="6" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={matchingForm.control} name="numPairs" render={({ field }) => (<FormItem><ShadFormLabel>Number of Pairs (3-6)</ShadFormLabel><FormControl><Input type="number" min="3" max="6" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 3)} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" disabled={loading.matching} className="w-full">{loading.matching ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
                             </CardContent>
@@ -514,5 +515,3 @@ export default function QuizPage() {
         </AppShell>
     );
 }
-
-    
