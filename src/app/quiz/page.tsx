@@ -265,7 +265,7 @@ export default function QuizPage() {
     }, [authLoading, isAuthenticated, router]);
 
     const awardMysteryBox = useCallback(() => {
-        addMysteryBox({ id: Date.now().toString(), tier: 'Common', collectedAt: new Date() });
+        addMysteryBox({ id: Date.now().toString(), tier: 'Common', collectedAt: new Date() }); // Tier is for display, real tier is decided on open
         toast({
             title: "Mystery Box Awarded!",
             description: "You've earned a Mystery Box! Check your inventory on the Progress page.",
@@ -308,40 +308,70 @@ export default function QuizPage() {
       if (type === 'mcq') setMcqSession(getSessionUpdater);
       else if (type === 'trueFalse') setTrueFalseSession(getSessionUpdater);
       else if (type === 'fillBlank') setFillBlankSession(getSessionUpdater);
-      else if (type === 'matching') setMatchingSession(getSessionUpdater);
+      // Matching is handled slightly differently since each pair is an "answer"
     };
+    
+    const handleMatchingAnswered = (isCorrect: boolean) => {
+        const getSessionUpdater = (prevSession: QuizSession) => {
+            const newSession = {
+              ...prevSession,
+              // Only increment answeredQuestions for correct answers in matching to avoid penalizing for wrong guesses
+              answeredQuestions: isCorrect ? prevSession.answeredQuestions + 1 : prevSession.answeredQuestions,
+              correctAnswers: isCorrect ? prevSession.correctAnswers + 1 : prevSession.correctAnswers,
+            };
+            if(isCorrect) {
+              checkQuizCompletion(newSession);
+            }
+            return newSession;
+        };
+        setMatchingSession(getSessionUpdater);
+    };
+
 
     const handleGenerate = async (type: QuizType, data: QuizTopicFormData | MatchingTopicFormData) => {
         setLoading(prev => ({ ...prev, [type]: true }));
         
         const resetSession = (topic: string, questions: any[], pairs: any[] | null = null): QuizSession => ({
-            ...initialQuizSession,
             topic,
             questions: pairs ? [] : questions, // Matching component uses pairs directly
             pairs: pairs,
             totalQuestions: pairs ? pairs.length : questions.length,
+            answeredQuestions: 0,
+            correctAnswers: 0,
         });
 
         try {
             if (type === 'mcq' && 'numQuestions' in data) {
                  const result = await generateMcqs({ topic: data.topic, numQuestions: data.numQuestions });
-                 if (result?.questions) {
+                 if (result?.questions?.length) {
                     setMcqSession(resetSession(data.topic, result.questions));
+                 } else {
+                   toast({ title: 'Generation Failed', description: 'Could not generate MCQ questions for this topic. Please try another.', variant: 'destructive'});
+                   setMcqSession(initialQuizSession);
                  }
             } else if (type === 'trueFalse' && 'numQuestions' in data) {
                 const result = await generateTrueFalses({ topic: data.topic, numQuestions: data.numQuestions });
-                if (result?.questions) {
+                if (result?.questions?.length) {
                     setTrueFalseSession(resetSession(data.topic, result.questions));
+                } else {
+                  toast({ title: 'Generation Failed', description: 'Could not generate True/False questions for this topic. Please try another.', variant: 'destructive'});
+                  setTrueFalseSession(initialQuizSession);
                 }
             } else if (type === 'fillBlank' && 'numQuestions' in data) {
                  const result = await generateFillBlanks({ topic: data.topic, numQuestions: data.numQuestions });
-                 if (result?.questions) {
+                 if (result?.questions?.length) {
                     setFillBlankSession(resetSession(data.topic, result.questions));
+                 } else {
+                  toast({ title: 'Generation Failed', description: 'Could not generate Fill-the-blank questions for this topic. Please try another.', variant: 'destructive'});
+                  setFillBlankSession(initialQuizSession);
                  }
             } else if (type === 'matching' && 'numPairs' in data) {
                 const result = await generateMatchingPairs({ topic: data.topic, numPairs: data.numPairs });
-                if (result?.pairs) {
+                if (result?.pairs?.length) {
                     setMatchingSession(resetSession(data.topic, [], result.pairs));
+                } else {
+                  toast({ title: 'Generation Failed', description: 'Could not generate Matching Pairs for this topic. Please try another.', variant: 'destructive'});
+                  setMatchingSession(initialQuizSession);
                 }
             }
         } catch (error) {
@@ -360,11 +390,14 @@ export default function QuizPage() {
         type: QuizType,
         session: QuizSession,
         Component: React.ElementType,
-        pointsPerCorrect: number,
-        formValues: any
+        pointsPerCorrect: number
     ) => {
         if (loading[type]) {
-            const numSkeletons = 'numQuestions' in formValues ? formValues.numQuestions : formValues.numPairs;
+            let numSkeletons = 3;
+            if (type === 'mcq') numSkeletons = mcqForm.getValues("numQuestions");
+            if (type === 'trueFalse') numSkeletons = trueFalseForm.getValues("numQuestions");
+            if (type === 'fillBlank') numSkeletons = fillBlankForm.getValues("numQuestions");
+            
             return (
                 <div className="space-y-4 mt-6">
                     {[...Array(numSkeletons)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
@@ -415,12 +448,12 @@ export default function QuizPage() {
                             <CardContent>
                                 <Form {...mcqForm}><form onSubmit={mcqForm.handleSubmit(data => handleGenerate('mcq', data))} className="space-y-4">
                                     <FormField control={mcqForm.control} name="topic" render={({ field }) => (<FormItem><ShadFormLabel>Topic</ShadFormLabel><FormControl><Input placeholder="e.g., The French Revolution" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={mcqForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={mcqForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" className="w-full" disabled={loading.mcq}>{loading.mcq ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
                             </CardContent>
                         </Card>
-                        {renderQuizContent('mcq', mcqSession, McqComponent, POINTS_PER_MCQ_CORRECT, mcqForm.getValues())}
+                        {renderQuizContent('mcq', mcqSession, McqComponent, POINTS_PER_MCQ_CORRECT)}
                     </TabsContent>
 
                     {/* True/False Tab */}
@@ -429,12 +462,12 @@ export default function QuizPage() {
                             <CardContent>
                                 <Form {...trueFalseForm}><form onSubmit={trueFalseForm.handleSubmit(data => handleGenerate('trueFalse', data))} className="space-y-4">
                                      <FormField control={trueFalseForm.control} name="topic" render={({ field }) => (<FormItem><ShadFormLabel>Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Human Anatomy" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                     <FormField control={trueFalseForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={trueFalseForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" className="w-full" disabled={loading.trueFalse}>{loading.trueFalse ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
                             </CardContent>
                         </Card>
-                        {renderQuizContent('trueFalse', trueFalseSession, TrueFalseComponent, POINTS_PER_TRUE_FALSE_CORRECT, trueFalseForm.getValues())}
+                        {renderQuizContent('trueFalse', trueFalseSession, TrueFalseComponent, POINTS_PER_TRUE_FALSE_CORRECT)}
                     </TabsContent>
 
                     {/* Fill the Blank Tab */}
@@ -443,12 +476,12 @@ export default function QuizPage() {
                             <CardContent>
                                 <Form {...fillBlankForm}><form onSubmit={fillBlankForm.handleSubmit(data => handleGenerate('fillBlank', data))} className="space-y-4">
                                      <FormField control={fillBlankForm.control} name="topic" render={({ field }) => (<FormItem><ShadFormLabel>Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Famous Poets" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                     <FormField control={fillBlankForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={fillBlankForm.control} name="numQuestions" render={({ field }) => (<FormItem><ShadFormLabel>Number of Questions (3-10)</ShadFormLabel><FormControl><Input type="number" min="3" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" className="w-full" disabled={loading.fillBlank}>{loading.fillBlank ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
                             </CardContent>
                         </Card>
-                         {renderQuizContent('fillBlank', fillBlankSession, FillBlankComponent, POINTS_PER_FILL_BLANK_CORRECT, fillBlankForm.getValues())}
+                         {renderQuizContent('fillBlank', fillBlankSession, FillBlankComponent, POINTS_PER_FILL_BLANK_CORRECT)}
                     </TabsContent>
 
                      {/* Matching Pairs Tab */}
@@ -457,17 +490,29 @@ export default function QuizPage() {
                              <CardContent>
                                 <Form {...matchingForm}><form onSubmit={matchingForm.handleSubmit(data => handleGenerate('matching', data))} className="space-y-4">
                                      <FormField control={matchingForm.control} name="topic" render={({ field }) => (<FormItem><ShadFormLabel>Topic</ShadFormLabel><FormControl><Input placeholder="e.g., Chemical Elements" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                     <FormField control={matchingForm.control} name="numPairs" render={({ field }) => (<FormItem><ShadFormLabel>Number of Pairs (3-6)</ShadFormLabel><FormControl><Input type="number" min="3" max="6" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={matchingForm.control} name="numPairs" render={({ field }) => (<FormItem><ShadFormLabel>Number of Pairs (3-6)</ShadFormLabel><FormControl><Input type="number" min="3" max="6" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
                                     <Button type="submit" disabled={loading.matching} className="w-full">{loading.matching ? 'Generating...' : 'Generate'}</Button>
                                 </form></Form>
                             </CardContent>
                         </Card>
                         {loading.matching && <Skeleton className="h-64 w-full mt-6" />}
-                        {matchingSession.pairs && <MatchingPairsComponent pairs={matchingSession.pairs} onCorrect={(points) => addPoints(points)} onAnswered={(isCorrect) => handleQuestionAnswered('matching', isCorrect)} />}
+                        {matchingSession.pairs && matchingSession.totalQuestions > 0 && <MatchingPairsComponent pairs={matchingSession.pairs} onCorrect={(points) => addPoints(points)} onAnswered={(isCorrect) => handleMatchingAnswered(isCorrect)} />}
                     </TabsContent>
 
                 </Tabs>
+
+                {!loading.mcq && !loading.trueFalse && !loading.fillBlank && !loading.matching && mcqSession.totalQuestions === 0 && trueFalseSession.totalQuestions === 0 && fillBlankSession.totalQuestions === 0 && matchingSession.totalQuestions === 0 &&(
+                    <Card className="text-center p-8 bg-secondary mt-8">
+                        <Lightbulb className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <CardTitle className="text-xl font-headline mb-2">No Quiz Generated Yet</CardTitle>
+                        <CardDescription>
+                        Choose a quiz type, enter a topic, and click &quot;Generate&quot; to start testing your knowledge!
+                        </CardDescription>
+                    </Card>
+                )}
             </div>
         </AppShell>
     );
 }
+
+    
