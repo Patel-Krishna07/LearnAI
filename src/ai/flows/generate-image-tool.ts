@@ -32,7 +32,7 @@ export const generateImageFromTextTool = ai.defineTool(
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const {media, text} = await ai.generate({
-          model: 'googleai/gemini-2.0-flash-preview-image-generation', // Specific model for image generation
+          model: 'googleai/gemini-1.5-flash',
           prompt: input.prompt,
           config: {
             responseModalities: ['TEXT', 'IMAGE'], // Must provide both
