@@ -31,18 +31,15 @@ export const generateImageFromTextTool = ai.defineTool(
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const {media, text} = await ai.generate({
-          model: 'googleai/gemini-1.5-flash',
+        const { media } = await ai.generate({
+          model: 'googleai/imagen-2',
           prompt: input.prompt,
-          config: {
-            responseModalities: ['TEXT', 'IMAGE'], // Must provide both
-          },
         });
 
         if (media && media.url) {
           return { imageDataUri: media.url };
         } else {
-          return { error: text || 'Image generation did not return an image or a specific error message.' };
+          return { error: 'Image generation did not return an image or a specific error message.' };
         }
       } catch (e: any) {
         lastError = e;

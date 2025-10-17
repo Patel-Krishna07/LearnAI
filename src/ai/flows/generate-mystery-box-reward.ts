@@ -17,7 +17,7 @@ const prompt = ai.definePrompt({
   name: 'generateMysteryBoxRewardPrompt',
   input: { schema: GenerateMysteryBoxRewardInputSchema },
   output: { schema: GenerateMysteryBoxRewardOutputSchema },
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-pro',
   prompt: `You are a fun and motivating reward generator for an educational app. Your task is to generate a reward and a short, encouraging message for a student who just opened a Mystery Box.
 
 The reward depends on the tier:

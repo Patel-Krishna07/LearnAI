@@ -36,7 +36,7 @@ const generateFillBlankPrompt = ai.definePrompt({
   name: 'generateFillBlankPrompt',
   input: { schema: GenerateFillBlankInputSchema },
   output: { schema: GenerateFillBlankOutputSchema },
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-pro',
   prompt: `You are an expert educator. Your task is to generate {{numQuestions}} distinct fill-in-the-blank questions for the given topic: {{{topic}}}.
 
   For each question, create a sentence that has a clear, single-word or short-phrase answer.

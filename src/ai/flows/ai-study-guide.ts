@@ -42,7 +42,7 @@ const prompt = ai.definePrompt({
   name: 'createStudyGuideEntryPrompt',
   input: {schema: CreateStudyGuideEntryInputSchema},
   output: {schema: CreateStudyGuideEntryOutputSchema},
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-pro',
   prompt: `Create a study guide entry combining the question and its AI summary.\n\nQuestion: {{{question}}}\nAI Summary: {{{aiSummary}}}\n\nStudy Guide Entry:`,
 });
 

@@ -64,7 +64,7 @@ const multimodalQueryPrompt = ai.definePrompt({
   input: {schema: MultimodalQueryInputSchema},
   output: {schema: MultimodalQueryOutputSchema},
   tools: [generateImageFromTextTool],
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-pro',
   prompt: `You are an AI assistant designed to help students. You have several capabilities. Prioritize them in this order: Navigation, Web Search, Image Generation, then general Q&A.
 
 **1. Navigation Task:**
